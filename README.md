@@ -74,12 +74,28 @@ requirements.txt
 ### Opción recomendada: onedir
 
 ```bash
-python -m PyInstaller --noconfirm --onedir --windowed --name RBP_onedir --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
+python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP_onedir --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
 ```
 
 Salida:
 
 - `dist/RBP_onedir/RBP_onedir.exe`
+
+## Descarga para usuarios finales
+
+- Los ejecutables para tus amigos se publican en **GitHub Releases** (no dentro del código fuente del repo).
+- Release actual: `v1.0.0` en la pestaña *Releases*.
+
+## Antivirus y falsos positivos (Windows)
+
+Para reducir falsos positivos con PyInstaller:
+
+- Usa `--onedir` (menos sospechoso que `--onefile` en muchos motores).
+- Usa `--noupx` para evitar compresión de binarios.
+- Usa `--clean` para builds reproducibles.
+- Evita renombrar el `.exe` en cada build sin necesidad.
+- Firma digitalmente el ejecutable (code-signing) cuando sea posible.
+- Si aparece un falso positivo, reporta el hash del binario al proveedor antivirus (por ejemplo, Microsoft Defender).
 
 ### Empaquetar en ZIP para enviar
 
