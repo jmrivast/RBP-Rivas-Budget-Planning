@@ -578,7 +578,8 @@ class Database:
         logger.info(f"Pago fijo eliminado: {payment_id}")
 
     def get_fixed_payment_record_status(self, fixed_payment_id: int, year: int,
-                                        month: int, quincenal_cycle: int) -> str:
+                                        month: int, quincenal_cycle: int,
+                                        default_status: str = "pending") -> str:
         """Estado del pago fijo en un período: paid | pending."""
         cursor = self.execute(
             """SELECT status FROM fixed_payment_records
@@ -587,7 +588,7 @@ class Database:
             (fixed_payment_id, year, month, quincenal_cycle)
         )
         row = cursor.fetchone()
-        return str(row[0]).strip().lower() if row and row[0] else "pending"
+        return str(row[0]).strip().lower() if row and row[0] else str(default_status).strip().lower()
 
     def set_fixed_payment_record_status(self, fixed_payment_id: int, year: int,
                                         month: int, quincenal_cycle: int,

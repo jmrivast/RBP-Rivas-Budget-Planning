@@ -343,14 +343,16 @@ class FinanceService:
                     m += 1
 
         out: List[Dict] = []
+        today = date.today()
         for fp in base:
             due_day = int(fp.get("due_day") or 0)
             if due_day <= 0:
                 item = dict(fp)
                 item["due_date"] = ""
                 item["is_paid"] = self.db.get_fixed_payment_record_status(
-                    int(fp["id"]), year, month, cycle
+                    int(fp["id"]), year, month, cycle, default_status="pending"
                 ) == "paid"
+                item["is_overdue"] = False
                 out.append(item)
                 continue
 
@@ -361,7 +363,11 @@ class FinanceService:
                 if start_d <= due_dt <= end_d:
                     item = dict(fp)
                     item["due_date"] = due_dt.isoformat()
-                    item["is_paid"] = False
+                    status = self.db.get_fixed_payment_record_status(
+                        int(fp["id"]), year, month, cycle, default_status="paid"
+                    )
+                    item["is_paid"] = status == "paid"
+                    item["is_overdue"] = due_dt <= today
                     out.append(item)
                     break
         out.sort(key=lambda x: (x.get("due_date", "") == "", x.get("due_date", ""), str(x.get("name", ""))))
@@ -596,10 +602,7 @@ class FinanceService:
             if not self._is_savings_expense(str(e.get("status") or ""))
         )
         total_expenses_savings = total_expenses - total_expenses_salary
-        total_fixed    = sum(
-            float(p["amount"]) for p in fixed_payments
-            if int(p.get("due_day") or 0) > 0 or bool(p.get("is_paid"))
-        )
+        total_fixed    = sum(float(p["amount"]) for p in fixed_payments if bool(p.get("is_paid")))
 
         dinero_inicial   = salary + extra_income - period_savings
         dinero_disponible= dinero_inicial - total_expenses_salary - total_fixed - total_loans
@@ -652,6 +655,8 @@ class FinanceService:
                     })
                 continue
             if due_date and due_date <= today_str:
+                if not bool(fp.get("is_paid")):
+                    continue
                 formatted_recent.append({
                     "date": due_date,
                     "description": f'Pago fijo: {fp.get("name", "(sin nombre)")}',
@@ -1845,7 +1850,12 @@ foreach ($legacy in $legacyRoots) {{
                     except Exception:
                         logger.exception("rollback_savings_expense")
                 self._snack("No se pudo guardar el gasto.",error=True); return
-            am.value="";de.value="";df.value=date.today().strftime("%Y-%m-%d");ca.value=None; src.value="sueldo"
+            am.value=""
+            de.value=""
+            df.value=date.today().strftime("%Y-%m-%d")
+            ca.value=None
+            ca.options=self._cat_opts()
+            src.value="sueldo"
             self._refresh_all(); self._snack("Gasto guardado.")
         return ft.Tab(text="Nuevo gasto", icon=ft.Icons.ADD_CIRCLE_OUTLINE,
             content=ft.Container(expand=True, padding=ft.padding.only(top=24,left=8),
@@ -2396,9 +2406,18 @@ foreach ($legacy in $legacyRoots) {{
             pid=fp["id"]
             no_fixed_date = int(fp.get("due_day") or 0) <= 0
             paid = bool(fp.get("is_paid"))
+            is_overdue = bool(fp.get("is_overdue"))
             due_label = "Sin fecha fija" if no_fixed_date else (fp.get("due_date") or str(fp.get("due_day", "-")))
-            status_txt = "PAGADO" if paid else "PENDIENTE"
-            status_color = _SUCCESS if paid else _WARN
+            if no_fixed_date:
+                status_txt = "PAGADO" if paid else "PENDIENTE"
+                status_color = _SUCCESS if paid else _WARN
+            else:
+                if is_overdue and not paid:
+                    status_txt = "NO PAGADO"
+                    status_color = _ERROR
+                else:
+                    status_txt = "PAGADO" if paid else "PENDIENTE"
+                    status_color = _SUCCESS if paid else _WARN
             extra_actions = []
             if no_fixed_date:
                 extra_actions.append(
@@ -2410,6 +2429,17 @@ foreach ($legacy in $legacyRoots) {{
                         on_click=lambda _, _pid=pid, _paid=paid: self._set_fixed_paid(_pid, not _paid),
                     )
                 )
+            elif is_overdue:
+                extra_actions.append(
+                    ft.IconButton(
+                        ft.Icons.REMOVE_CIRCLE_OUTLINE if paid else ft.Icons.CHECK_CIRCLE_OUTLINE,
+                        icon_color=_ERROR if paid else _SUCCESS,
+                        icon_size=20,
+                        tooltip="Marcar no pagado" if paid else "Marcar pagado",
+                        on_click=lambda _, _pid=pid, _paid=paid: self._set_fixed_paid(_pid, not _paid),
+                    )
+                )
+            amount_color = _ERROR if (is_overdue and not paid and not no_fixed_date) else None
             self.fixed_list.controls.append(ft.Container(
                 padding=ft.padding.symmetric(horizontal=12,vertical=8),
                 border_radius=8,bgcolor="#F5F5F5",
@@ -2417,13 +2447,12 @@ foreach ($legacy in $legacyRoots) {{
                     ft.Column([ft.Text(fp["name"],weight=ft.FontWeight.W_500),
                                ft.Text(("Pago manual" if no_fixed_date else "Fecha") + f' {due_label}',size=12,color=_SUBTITLE)],
                               spacing=2,expand=True),
-                    *([
-                        ft.Container(padding=ft.padding.symmetric(horizontal=8,vertical=2),
-                                     border_radius=6,bgcolor=status_color,
-                                     content=ft.Text(status_txt,size=11,color="white",
-                                                     weight=ft.FontWeight.BOLD))
-                    ] if no_fixed_date else []),
-                    ft.Text(format_currency(float(fp["amount"])),weight=ft.FontWeight.BOLD),
+                    ft.Container(padding=ft.padding.symmetric(horizontal=8,vertical=2),
+                                 border_radius=6,bgcolor=status_color,
+                                 content=ft.Text(status_txt,size=11,color="white",
+                                                 weight=ft.FontWeight.BOLD)),
+                    ft.Text(format_currency(float(fp["amount"])),weight=ft.FontWeight.BOLD,
+                            color=amount_color),
                     *extra_actions,
                     ft.IconButton(ft.Icons.EDIT_OUTLINED,icon_color=_PRIMARY,icon_size=18,
                                   tooltip="Editar",
@@ -2787,7 +2816,7 @@ foreach ($legacy in $legacyRoots) {{
     def _set_fixed_paid(self, pid: int, paid: bool):
         self.service.set_fixed_payment_paid(pid, self._vy, self._vm, self._vc, paid)
         self._refresh_all()
-        self._snack("Pago fijo marcado como pagado." if paid else "Pago fijo marcado como pendiente.")
+        self._snack("Pago fijo marcado como pagado." if paid else "Pago fijo marcado como no pagado.")
     def _mark_paid(self, lid):
         self.service.mark_loan_paid(lid); self._refresh_all()
         self._snack("Prestamo pagado.")
