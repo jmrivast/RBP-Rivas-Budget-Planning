@@ -1088,6 +1088,29 @@ foreach ($legacy in $legacyRoots) {{
         timer.daemon = True
         timer.start()
 
+    @staticmethod
+    def _launch_new_windows_instance(exe_path: Path) -> bool:
+        """Intenta abrir la nueva versión de forma directa y desacoplada."""
+        try:
+            creation_flags = 0
+            creation_flags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+            creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            subprocess.Popen(
+                [str(exe_path)],
+                cwd=str(exe_path.parent),
+                creationflags=creation_flags,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except Exception:
+            try:
+                os.startfile(str(exe_path))
+                return True
+            except Exception:
+                logger.exception("update_direct_launch")
+                return False
+
     def _download_and_prepare_update(self, latest: Dict) -> bool:
         tag = str(latest.get("tag") or "").strip()
         asset_url = str(latest.get("asset_url") or "").strip()
@@ -1148,20 +1171,26 @@ foreach ($legacy in $legacyRoots) {{
                     exe_path = found[0]
 
             if exe_path and exe_path.exists():
-                try:
-                    if os.name == "nt":
+                launched = False
+                if os.name == "nt":
+                    launched = self._launch_new_windows_instance(exe_path)
+                    try:
                         self._launch_windows_update_finalize(
                             exe_path, updates_root, target_dir, zip_path, legacy_roots
                         )
+                    except Exception:
+                        logger.exception("update_finalize_launcher")
+                    if launched:
                         self._schedule_self_termination(3.0)
                     else:
+                        self._snack("Actualización descargada, pero no se pudo abrir la nueva versión.", error=True)
+                        return False
+                else:
+                    try:
                         self._refresh_desktop_shortcut(exe_path)
-                        if os.name == "nt":
-                            os.startfile(str(exe_path))
-                        else:
-                            webbrowser.open(str(exe_path))
-                except Exception:
-                    logger.exception("update_launch")
+                        webbrowser.open(str(exe_path))
+                    except Exception:
+                        logger.exception("update_launch")
                 self._snack(f"Actualización {tag} lista. Cerrando esta versión...")
             else:
                 self._snack(f"Actualización {tag} lista en: {target_dir}")
