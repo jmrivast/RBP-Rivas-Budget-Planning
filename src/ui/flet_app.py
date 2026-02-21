@@ -49,7 +49,7 @@ _ERROR     = "#E53935"
 _WARN      = "#FB8C00"
 
 REPORTS_DIR = BASE_DIR / "reportes"
-APP_VERSION = "1.3.0-beta.2"
+APP_VERSION = "1.3.0"
 GITHUB_RELEASE_LATEST_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases/latest"
 GITHUB_RELEASES_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases?per_page=25"
 try:
@@ -333,6 +333,10 @@ class FinanceService:
         t = date.today()
         self.db.record_savings(self.user_id, amount, t.year, t.month,
                                self.get_cycle_for_date(t))
+    def add_extra_savings(self, amount):
+        t = date.today()
+        self.db.add_extra_savings(self.user_id, amount, t.year, t.month,
+                                  self.get_cycle_for_date(t))
     def get_period_savings(self, year: int, month: int, cycle: int) -> float:
         row = self.db.get_savings_by_quincenal(self.user_id, year, month, cycle)
         if not row:
@@ -978,10 +982,6 @@ class FinanzasFletApp:
 
         today_key = date.today().isoformat()
         check_key = "update_last_check_date_beta" if include_beta else "update_last_check_date_stable"
-        if not manual:
-            last_check = self.service.get_setting(check_key, "")
-            if last_check == today_key:
-                return
 
         latest = self._fetch_latest_release(include_beta=bool(include_beta))
         self.service.set_setting(check_key, today_key)
@@ -1572,6 +1572,8 @@ class FinanzasFletApp:
                              keyboard_type=ft.KeyboardType.NUMBER,width=260)
         wit_f = ft.TextField(label="Retirar del ahorro total RD$",hint_text="2000",
                              keyboard_type=ft.KeyboardType.NUMBER,width=260)
+        extra_f = ft.TextField(label="Aporte extra al ahorro total RD$",hint_text="1000",
+                               keyboard_type=ft.KeyboardType.NUMBER,width=260)
         gn = ft.TextField(label="Nombre meta",hint_text="Viaje",width=260)
         ga = ft.TextField(label="Meta RD$",hint_text="100000",
                           keyboard_type=ft.KeyboardType.NUMBER,width=200)
@@ -1598,6 +1600,17 @@ class FinanzasFletApp:
                 self._snack("Retiro de ahorro exitoso.")
             else:
                 self._snack("Fondos insuficientes.",error=True)
+
+        def on_extra(_):
+            a=(extra_f.value or "").strip()
+            if not a: self._snack("Ingresa monto.",error=True); return
+            try:
+                v=float(a)
+                if v<=0: raise ValueError
+            except ValueError: self._snack("Invalido.",error=True); return
+            self.service.add_extra_savings(v)
+            extra_f.value=""
+            self._refresh_all(); self._snack("Aporte extra al ahorro total registrado.")
 
         def on_goal(_):
             n=(gn.value or "").strip(); a=(ga.value or "").strip()
@@ -1645,6 +1658,14 @@ class FinanzasFletApp:
                                     ft.FilledButton("Retirar",icon=ft.Icons.REMOVE,on_click=on_wit,
                                                     style=ft.ButtonStyle(bgcolor=_WARN)),
                                 ], spacing=10),
+                                ft.Row([
+                                    extra_f,
+                                    ft.FilledButton("Aportar extra", icon=ft.Icons.SAVINGS,
+                                                    on_click=on_extra,
+                                                    style=ft.ButtonStyle(bgcolor=_PRIMARY)),
+                                ], spacing=10),
+                                ft.Text("Este aporte suma al ahorro total y no descuenta del salario del período.",
+                                        size=11, color=_SUBTITLE),
                             ], spacing=8),
                         ),
                     ], spacing=12, run_spacing=12),

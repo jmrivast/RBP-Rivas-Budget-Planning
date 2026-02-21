@@ -616,6 +616,33 @@ class Database:
         )
         self.commit()
         logger.info(f"Ahorro registrado para usuario {user_id}: {amount}")
+
+    def add_extra_savings(self, user_id: int, amount: float, year: int, month: int,
+                          quincenal_cycle: int):
+        """Aporte extra al ahorro total sin afectar el ahorro del período."""
+        cursor = self.execute(
+            """SELECT id FROM savings
+               WHERE user_id = ?
+               ORDER BY created_at DESC LIMIT 1""",
+            (user_id,)
+        )
+        row = cursor.fetchone()
+
+        if row and row[0] is not None:
+            self.execute(
+                "UPDATE savings SET total_saved = total_saved + ? WHERE id = ?",
+                (amount, int(row[0]))
+            )
+        else:
+            self.execute(
+                """INSERT INTO savings
+                   (user_id, last_quincenal_savings, total_saved, year, month, quincenal_cycle)
+                   VALUES (?, 0, ?, ?, ?, ?)""",
+                (user_id, amount, year, month, quincenal_cycle)
+            )
+
+        self.commit()
+        logger.info(f"Aporte extra al ahorro total para usuario {user_id}: {amount}")
     
     def get_total_savings(self, user_id: int) -> float:
         """Obtener ahorro total acumulado."""
