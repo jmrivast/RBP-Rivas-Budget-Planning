@@ -681,6 +681,8 @@ class FinanzasFletApp:
         self.quincenal_label = ft.Text("", size=14, weight=ft.FontWeight.W_500, color=_PRIMARY)
         self.recent_list     = ft.ListView(spacing=4, expand=True)
         self.chart_container = ft.Container()
+        self.lbl_period_savings_current = ft.Text("Actual: RD$0.00", size=12, color=_SUBTITLE)
+        self.lbl_total_savings_available = ft.Text("Disponible: RD$0.00", size=12, color=_SUBTITLE)
 
         # listas
         self.fixed_list   = ft.ListView(spacing=4, expand=True)
@@ -1419,9 +1421,6 @@ class FinanzasFletApp:
                 ],spacing=10,expand=True)))
 
     def _build_savings_tab(self) -> ft.Tab:
-        period_saved = self.service.get_period_savings(self._vy, self._vm, self._vc)
-        total_saved = self.service.get_total_savings()
-
         dep_f = ft.TextField(label="Depositar en este período RD$",hint_text="7500",
                              keyboard_type=ft.KeyboardType.NUMBER,width=260)
         wit_f = ft.TextField(label="Retirar del ahorro total RD$",hint_text="2000",
@@ -1477,7 +1476,7 @@ class FinanzasFletApp:
                             bgcolor=_CARD_BG,
                             content=ft.Column([
                                 ft.Text("Ahorro de este período", size=14, weight=ft.FontWeight.W_600),
-                                ft.Text(f"Actual: {format_currency(period_saved)}", size=12, color=_SUBTITLE),
+                                self.lbl_period_savings_current,
                                 ft.Row([
                                     dep_f,
                                     ft.FilledButton("Depositar",icon=ft.Icons.ADD,on_click=on_dep,
@@ -1493,7 +1492,7 @@ class FinanzasFletApp:
                             bgcolor=_CARD_BG,
                             content=ft.Column([
                                 ft.Text("Ahorro total", size=14, weight=ft.FontWeight.W_600),
-                                ft.Text(f"Disponible: {format_currency(total_saved)}", size=12, color=_SUBTITLE),
+                                self.lbl_total_savings_available,
                                 ft.Row([
                                     wit_f,
                                     ft.FilledButton("Retirar",icon=ft.Icons.REMOVE,on_click=on_wit,
@@ -1822,6 +1821,8 @@ class FinanzasFletApp:
         self.lbl_dinero_ini.value  = format_currency(data["dinero_inicial"])
         self.lbl_total_gasto.value = format_currency(data["total_expenses"])
         self.lbl_ahorro_tot.value  = format_currency(data["total_savings"])
+        self.lbl_period_savings_current.value = f"Actual: {format_currency(data.get('period_savings', 0.0))}"
+        self.lbl_total_savings_available.value = f"Disponible: {format_currency(data['total_savings'])}"
         self.lbl_avg_daily.value   = format_currency(data["avg_daily"])
         self.lbl_loans.value       = format_currency(data["total_loans"])
 
