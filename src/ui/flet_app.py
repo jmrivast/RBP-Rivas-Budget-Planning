@@ -859,6 +859,10 @@ class FinanzasFletApp:
         raw = (tag or "").strip().replace(" ", "_")
         return re.sub(r"[^a-zA-Z0-9._-]", "_", raw)
 
+        @staticmethod
+        def _ps_escape(value: str) -> str:
+                return str(value).replace("'", "''")
+
     def _refresh_desktop_shortcut(self, exe_path: Path):
         """Crear/actualizar acceso directo en escritorio apuntando a la versión más reciente."""
         if os.name != "nt":
@@ -870,6 +874,27 @@ $desktopPaths = @()
 $desktopPaths += [Environment]::GetFolderPath('Desktop')
 $desktopPaths += $WshShell.SpecialFolders('Desktop')
 $desktopPaths += $WshShell.SpecialFolders('AllUsersDesktop')
+$desktopPaths += [Environment]::GetEnvironmentVariable('OneDrive')
+$desktopPaths += [Environment]::GetEnvironmentVariable('OneDriveConsumer')
+$desktopPaths += [Environment]::GetEnvironmentVariable('OneDriveCommercial')
+$desktopPaths += (Join-Path $env:USERPROFILE 'OneDrive\\Desktop')
+
+try {{
+    $regDesktop = (Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders' -Name Desktop -ErrorAction SilentlyContinue).Desktop
+    if ($regDesktop) {{
+        $expanded = [Environment]::ExpandEnvironmentVariables($regDesktop)
+        $desktopPaths += $expanded
+    }}
+}} catch {{}}
+
+$desktopPaths = $desktopPaths | ForEach-Object {{
+    if ($_ -and ($_ -match 'OneDrive(Consumer|Commercial)?$')) {{
+        Join-Path $_ 'Desktop'
+    }} else {{
+        $_
+    }}
+}}
+
 $desktopPaths = $desktopPaths | Where-Object {{ -not [string]::IsNullOrWhiteSpace($_) }} | Select-Object -Unique
 
 foreach ($desk in $desktopPaths) {{
@@ -893,49 +918,87 @@ foreach ($desk in $desktopPaths) {{
         except Exception:
             logger.exception("desktop_shortcut_update")
 
-    def _cleanup_old_updates(self, updates_root: Path, keep_dir: Path, keep_zip: Path):
-        """Eliminar versiones viejas en carpeta de updates para ahorrar espacio."""
-        try:
-            # Carpetas extraídas: conservar la actual + 1 más reciente
-            dirs = [d for d in updates_root.glob("RBP_*") if d.is_dir()]
-            dirs_sorted = sorted(dirs, key=lambda p: p.stat().st_mtime, reverse=True)
-            keep_set = {str(keep_dir)}
-            extra_kept = 0
-            for d in dirs_sorted:
-                if str(d) in keep_set:
-                    continue
-                if extra_kept < 1:
-                    extra_kept += 1
-                    continue
-                shutil.rmtree(d, ignore_errors=True)
+        def _launch_windows_update_finalize(self, exe_path: Path, updates_root: Path,
+                                                                                keep_dir: Path, keep_zip: Path):
+                """Lanza proceso separado que abre app nueva, cierra la vieja y limpia updates."""
+                old_pid = os.getpid()
+                ps_script = f"""
+$ErrorActionPreference = 'SilentlyContinue'
+$oldPid = {old_pid}
+$exePath = '{self._ps_escape(str(exe_path))}'
+$workDir = '{self._ps_escape(str(exe_path.parent))}'
+$updatesRoot = '{self._ps_escape(str(updates_root))}'
+$keepDir = '{self._ps_escape(str(keep_dir))}'
+$keepZip = '{self._ps_escape(str(keep_zip))}'
 
-            # ZIPs descargados: conservar el actual + 1 más reciente
-            zips = [z for z in updates_root.glob("*.zip") if z.is_file()]
-            zips_sorted = sorted(zips, key=lambda p: p.stat().st_mtime, reverse=True)
-            zip_keep_set = {str(keep_zip)}
-            zip_extra_kept = 0
-            for z in zips_sorted:
-                if str(z) in zip_keep_set:
-                    continue
-                if zip_extra_kept < 1:
-                    zip_extra_kept += 1
-                    continue
-                try:
-                    z.unlink(missing_ok=True)
-                except Exception:
-                    pass
-        except Exception:
-            logger.exception("cleanup_old_updates")
+function Update-RbpShortcut {{
+    $WshShell = New-Object -ComObject WScript.Shell
+    $desktopPaths = @()
+    $desktopPaths += [Environment]::GetFolderPath('Desktop')
+    $desktopPaths += $WshShell.SpecialFolders('Desktop')
+    $desktopPaths += $WshShell.SpecialFolders('AllUsersDesktop')
+    $desktopPaths += [Environment]::GetEnvironmentVariable('OneDrive')
+    $desktopPaths += [Environment]::GetEnvironmentVariable('OneDriveConsumer')
+    $desktopPaths += [Environment]::GetEnvironmentVariable('OneDriveCommercial')
+    $desktopPaths += (Join-Path $env:USERPROFILE 'OneDrive\\Desktop')
 
-    @staticmethod
-    def _close_current_app_after_update():
-        """Cerrar app actual tras lanzar la nueva versión."""
-        def _shutdown():
-            try:
-                os._exit(0)
-            except Exception:
-                pass
-        threading.Timer(1.2, _shutdown).start()
+    try {{
+        $regDesktop = (Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders' -Name Desktop -ErrorAction SilentlyContinue).Desktop
+        if ($regDesktop) {{
+            $desktopPaths += [Environment]::ExpandEnvironmentVariables($regDesktop)
+        }}
+    }} catch {{}}
+
+    $desktopPaths = $desktopPaths | ForEach-Object {{
+        if ($_ -and ($_ -match 'OneDrive(Consumer|Commercial)?$')) {{
+            Join-Path $_ 'Desktop'
+        }} else {{
+            $_
+        }}
+    }}
+
+    $desktopPaths = $desktopPaths | Where-Object {{ -not [string]::IsNullOrWhiteSpace($_) }} | Select-Object -Unique
+
+    foreach ($desk in $desktopPaths) {{
+        try {{
+            if (-not (Test-Path $desk)) {{ continue }}
+            $shortcutPath = Join-Path $desk 'RBP.lnk'
+            $Shortcut = $WshShell.CreateShortcut($shortcutPath)
+            $Shortcut.TargetPath = $exePath
+            $Shortcut.WorkingDirectory = $workDir
+            $Shortcut.IconLocation = "$exePath,0"
+            $Shortcut.Description = 'RBP - Rivas Budget Planning'
+            $Shortcut.Save()
+        }} catch {{}}
+    }}
+}}
+
+Start-Sleep -Milliseconds 600
+Update-RbpShortcut
+Start-Process -FilePath $exePath -WorkingDirectory $workDir
+Start-Sleep -Milliseconds 800
+try {{ Stop-Process -Id $oldPid -Force }} catch {{}}
+
+if (Test-Path $updatesRoot) {{
+    Get-ChildItem -Path $updatesRoot -Directory -Filter 'RBP_*' -ErrorAction SilentlyContinue |
+        Where-Object {{ $_.FullName -ne $keepDir }} |
+        ForEach-Object {{ Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }}
+
+    Get-ChildItem -Path $updatesRoot -File -Filter '*.zip' -ErrorAction SilentlyContinue |
+        Where-Object {{ $_.FullName -ne $keepZip }} |
+        ForEach-Object {{ Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }}
+}}
+"""
+                creation_flags = 0
+                creation_flags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+                creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                creation_flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                subprocess.Popen(
+                        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", ps_script],
+                        creationflags=creation_flags,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                )
 
     def _download_and_prepare_update(self, latest: Dict) -> bool:
         tag = str(latest.get("tag") or "").strip()
@@ -998,16 +1061,17 @@ foreach ($desk in $desktopPaths) {{
 
             if exe_path and exe_path.exists():
                 try:
-                    self._refresh_desktop_shortcut(exe_path)
-                    self._cleanup_old_updates(updates_root, target_dir, zip_path)
                     if os.name == "nt":
-                        os.startfile(str(exe_path))
+                        self._launch_windows_update_finalize(exe_path, updates_root, target_dir, zip_path)
                     else:
-                        webbrowser.open(str(exe_path))
-                    self._close_current_app_after_update()
+                        self._refresh_desktop_shortcut(exe_path)
+                        if os.name == "nt":
+                            os.startfile(str(exe_path))
+                        else:
+                            webbrowser.open(str(exe_path))
                 except Exception:
                     logger.exception("update_launch")
-                self._snack(f"Actualización {tag} lista. Se abrió la nueva app.")
+                self._snack(f"Actualización {tag} lista. Cerrando esta versión...")
             else:
                 self._snack(f"Actualización {tag} lista en: {target_dir}")
             return True
