@@ -97,6 +97,12 @@ Para reducir falsos positivos con PyInstaller:
 - Firma digitalmente el ejecutable (code-signing) cuando sea posible.
 - Si aparece un falso positivo, reporta el hash del binario al proveedor antivirus (por ejemplo, Microsoft Defender).
 
+### Firma gratuita para proyectos open-source (SignPath Foundation)
+
+- Puedes automatizar firma confiable sin pagar certificado directo usando SignPath Foundation + GitHub Actions.
+- Configuración guiada en `SIGNPATH_FOUNDATION_SETUP.md`.
+- Workflow listo en `.github/workflows/release-signpath.yml`.
+
 ### Empaquetar en ZIP para enviar
 
 ```powershell

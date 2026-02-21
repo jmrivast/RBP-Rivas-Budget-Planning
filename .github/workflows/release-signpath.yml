@@ -1,0 +1,80 @@
+name: Build and Sign Windows Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build-and-sign:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build portable app (unsigned)
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP_onedir --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
+          Compress-Archive -Path .\dist\RBP_onedir\* -DestinationPath .\dist\RBP-Windows-Portable-unsigned.zip -Force
+
+      - name: Upload unsigned artifact for SignPath
+        id: upload_unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbp-unsigned
+          path: .\dist\RBP-Windows-Portable-unsigned.zip
+
+      - name: Submit signing request (SignPath)
+        id: signpath
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: .\dist\signed
+
+      - name: Prepare signed artifact + checksums
+        shell: pwsh
+        run: |
+          $signedZip = Get-ChildItem .\dist\signed -Recurse -File | Where-Object { $_.Extension -eq '.zip' } | Select-Object -First 1
+          if (-not $signedZip) { throw 'No signed ZIP artifact found in dist/signed' }
+          Copy-Item $signedZip.FullName .\dist\RBP-Windows-Portable-signed.zip -Force
+
+          $exe = Get-ChildItem .\dist\RBP_onedir -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
+          if (-not $exe) { throw 'No EXE found in dist/RBP_onedir' }
+
+          $exeHash = (Get-FileHash -Algorithm SHA256 $exe.FullName).Hash
+          $zipHash = (Get-FileHash -Algorithm SHA256 .\dist\RBP-Windows-Portable-signed.zip).Hash
+
+          @(
+            "RBP EXE (SHA256): $exeHash"
+            "RBP Signed ZIP (SHA256): $zipHash"
+          ) | Set-Content .\dist\SHA256SUMS.txt -Encoding UTF8
+
+      - name: Upload signed assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ github.event_name == 'release' }}
+        with:
+          files: |
+            .\dist\RBP-Windows-Portable-signed.zip
+            .\dist\SHA256SUMS.txt
