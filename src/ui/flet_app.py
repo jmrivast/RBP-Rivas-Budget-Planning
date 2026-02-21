@@ -6,7 +6,7 @@ categoría, exportación CSV, reportes PDF estéticos y alerta de quincena.
 """
 from __future__ import annotations
 
-import base64, csv, ctypes, io, json, logging, math, os, re, shutil, subprocess, sys, webbrowser, zipfile
+import base64, csv, ctypes, io, json, logging, math, os, re, shutil, subprocess, sys, threading, webbrowser, zipfile
 from multiprocessing import freeze_support
 from calendar import monthrange
 from collections import defaultdict
@@ -864,17 +864,24 @@ class FinanzasFletApp:
         if os.name != "nt":
             return
         try:
-            desktop = Path(os.path.expanduser("~")) / "Desktop"
-            shortcut_path = desktop / "RBP.lnk"
-
             ps_script = f"""
 $WshShell = New-Object -ComObject WScript.Shell
-$Shortcut = $WshShell.CreateShortcut('{str(shortcut_path).replace("'", "''")}')
-$Shortcut.TargetPath = '{str(exe_path).replace("'", "''")}'
-$Shortcut.WorkingDirectory = '{str(exe_path.parent).replace("'", "''")}'
-$Shortcut.IconLocation = '{str(exe_path).replace("'", "''")},0'
-$Shortcut.Description = 'RBP - Rivas Budget Planning'
-$Shortcut.Save()
+$desktopPaths = @()
+$desktopPaths += [Environment]::GetFolderPath('Desktop')
+$desktopPaths += $WshShell.SpecialFolders('Desktop')
+$desktopPaths += $WshShell.SpecialFolders('AllUsersDesktop')
+$desktopPaths = $desktopPaths | Where-Object {{ -not [string]::IsNullOrWhiteSpace($_) }} | Select-Object -Unique
+
+foreach ($desk in $desktopPaths) {{
+  if (-not (Test-Path $desk)) {{ continue }}
+  $shortcutPath = Join-Path $desk 'RBP.lnk'
+  $Shortcut = $WshShell.CreateShortcut($shortcutPath)
+  $Shortcut.TargetPath = '{str(exe_path).replace("'", "''")}'
+  $Shortcut.WorkingDirectory = '{str(exe_path.parent).replace("'", "''")}'
+  $Shortcut.IconLocation = '{str(exe_path).replace("'", "''")},0'
+  $Shortcut.Description = 'RBP - Rivas Budget Planning'
+  $Shortcut.Save()
+}}
 """
 
             subprocess.run(
@@ -885,6 +892,50 @@ $Shortcut.Save()
             )
         except Exception:
             logger.exception("desktop_shortcut_update")
+
+    def _cleanup_old_updates(self, updates_root: Path, keep_dir: Path, keep_zip: Path):
+        """Eliminar versiones viejas en carpeta de updates para ahorrar espacio."""
+        try:
+            # Carpetas extraídas: conservar la actual + 1 más reciente
+            dirs = [d for d in updates_root.glob("RBP_*") if d.is_dir()]
+            dirs_sorted = sorted(dirs, key=lambda p: p.stat().st_mtime, reverse=True)
+            keep_set = {str(keep_dir)}
+            extra_kept = 0
+            for d in dirs_sorted:
+                if str(d) in keep_set:
+                    continue
+                if extra_kept < 1:
+                    extra_kept += 1
+                    continue
+                shutil.rmtree(d, ignore_errors=True)
+
+            # ZIPs descargados: conservar el actual + 1 más reciente
+            zips = [z for z in updates_root.glob("*.zip") if z.is_file()]
+            zips_sorted = sorted(zips, key=lambda p: p.stat().st_mtime, reverse=True)
+            zip_keep_set = {str(keep_zip)}
+            zip_extra_kept = 0
+            for z in zips_sorted:
+                if str(z) in zip_keep_set:
+                    continue
+                if zip_extra_kept < 1:
+                    zip_extra_kept += 1
+                    continue
+                try:
+                    z.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        except Exception:
+            logger.exception("cleanup_old_updates")
+
+    @staticmethod
+    def _close_current_app_after_update():
+        """Cerrar app actual tras lanzar la nueva versión."""
+        def _shutdown():
+            try:
+                os._exit(0)
+            except Exception:
+                pass
+        threading.Timer(1.2, _shutdown).start()
 
     def _download_and_prepare_update(self, latest: Dict) -> bool:
         tag = str(latest.get("tag") or "").strip()
@@ -948,10 +999,12 @@ $Shortcut.Save()
             if exe_path and exe_path.exists():
                 try:
                     self._refresh_desktop_shortcut(exe_path)
+                    self._cleanup_old_updates(updates_root, target_dir, zip_path)
                     if os.name == "nt":
                         os.startfile(str(exe_path))
                     else:
                         webbrowser.open(str(exe_path))
+                    self._close_current_app_after_update()
                 except Exception:
                     logger.exception("update_launch")
                 self._snack(f"Actualización {tag} lista. Se abrió la nueva app.")
