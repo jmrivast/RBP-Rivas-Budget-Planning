@@ -34,8 +34,30 @@ jobs:
           python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP_onedir --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
           Compress-Archive -Path .\dist\RBP_onedir\* -DestinationPath .\dist\RBP-Windows-Portable-unsigned.zip -Force
 
+      - name: Detect SignPath configuration
+        id: sign_mode
+        shell: pwsh
+        env:
+          SP_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SP_ORG_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          SP_PROJECT: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          SP_POLICY: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+        run: |
+          $hasAll = -not [string]::IsNullOrWhiteSpace($env:SP_API_TOKEN) -and `
+                    -not [string]::IsNullOrWhiteSpace($env:SP_ORG_ID) -and `
+                    -not [string]::IsNullOrWhiteSpace($env:SP_PROJECT) -and `
+                    -not [string]::IsNullOrWhiteSpace($env:SP_POLICY)
+
+          if ($hasAll) {
+            "mode=signpath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          else {
+            "mode=selfsigned" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
       - name: Upload unsigned artifact for SignPath
         id: upload_unsigned
+        if: ${{ steps.sign_mode.outputs.mode == 'signpath' }}
         uses: actions/upload-artifact@v4
         with:
           name: rbp-unsigned
@@ -43,6 +65,7 @@ jobs:
 
       - name: Submit signing request (SignPath)
         id: signpath
+        if: ${{ steps.sign_mode.outputs.mode == 'signpath' }}
         uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -53,12 +76,34 @@ jobs:
           wait-for-completion: true
           output-artifact-directory: .\dist\signed
 
+      - name: Self-sign executable (free fallback)
+        if: ${{ steps.sign_mode.outputs.mode == 'selfsigned' }}
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem .\dist\RBP_onedir -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
+          if (-not $exe) { throw 'No EXE found in dist/RBP_onedir' }
+
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=RBP Community Build" -CertStoreLocation "Cert:\CurrentUser\My" -NotAfter (Get-Date).AddYears(1)
+          Export-Certificate -Cert $cert -FilePath .\dist\RBP-SelfSigned-CodeSigning.cer | Out-Null
+
+          $result = Set-AuthenticodeSignature -FilePath $exe.FullName -Certificate $cert -HashAlgorithm SHA256
+          if ($result.Status -eq 'NotSigned') {
+            throw "Self-signing failed: $($result.StatusMessage)"
+          }
+
       - name: Prepare signed artifact + checksums
         shell: pwsh
         run: |
-          $signedZip = Get-ChildItem .\dist\signed -Recurse -File | Where-Object { $_.Extension -eq '.zip' } | Select-Object -First 1
-          if (-not $signedZip) { throw 'No signed ZIP artifact found in dist/signed' }
-          Copy-Item $signedZip.FullName .\dist\RBP-Windows-Portable-signed.zip -Force
+          if ('${{ steps.sign_mode.outputs.mode }}' -eq 'signpath') {
+            $signedZip = Get-ChildItem .\dist\signed -Recurse -File | Where-Object { $_.Extension -eq '.zip' } | Select-Object -First 1
+            if (-not $signedZip) { throw 'No signed ZIP artifact found in dist/signed' }
+            Copy-Item $signedZip.FullName .\dist\RBP-Windows-Portable-signed.zip -Force
+            "Signing mode: signpath" | Set-Content .\dist\SIGNING-MODE.txt -Encoding UTF8
+          }
+          else {
+            Compress-Archive -Path .\dist\RBP_onedir\* -DestinationPath .\dist\RBP-Windows-Portable-signed.zip -Force
+            "Signing mode: selfsigned (free fallback)" | Set-Content .\dist\SIGNING-MODE.txt -Encoding UTF8
+          }
 
           $exe = Get-ChildItem .\dist\RBP_onedir -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
           if (-not $exe) { throw 'No EXE found in dist/RBP_onedir' }
@@ -71,10 +116,21 @@ jobs:
             "RBP Signed ZIP (SHA256): $zipHash"
           ) | Set-Content .\dist\SHA256SUMS.txt -Encoding UTF8
 
-      - name: Upload signed assets to GitHub Release
+      - name: Upload signed assets to GitHub Release (SignPath)
         uses: softprops/action-gh-release@v2
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' && steps.sign_mode.outputs.mode == 'signpath' }}
         with:
           files: |
             .\dist\RBP-Windows-Portable-signed.zip
             .\dist\SHA256SUMS.txt
+            .\dist\SIGNING-MODE.txt
+
+      - name: Upload signed assets to GitHub Release (self-signed)
+        uses: softprops/action-gh-release@v2
+        if: ${{ github.event_name == 'release' && steps.sign_mode.outputs.mode == 'selfsigned' }}
+        with:
+          files: |
+            .\dist\RBP-Windows-Portable-signed.zip
+            .\dist\SHA256SUMS.txt
+            .\dist\SIGNING-MODE.txt
+            .\dist\RBP-SelfSigned-CodeSigning.cer
