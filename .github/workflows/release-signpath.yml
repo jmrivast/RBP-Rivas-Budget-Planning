@@ -31,7 +31,7 @@ jobs:
       - name: Build portable app (unsigned)
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
+          python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." --hidden-import=flet_desktop --hidden-import=flet_desktop.app --collect-all=flet_desktop main.py
           Compress-Archive -Path .\dist\RBP\* -DestinationPath .\dist\RBP-Windows-Portable-unsigned.zip -Force
 
       - name: Detect SignPath configuration

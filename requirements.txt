@@ -1,4 +1,5 @@
 flet==0.27.6
+flet-desktop==0.27.6
 fpdf2==2.8.6
 pyinstaller==6.12.0
 python-dotenv==1.0.0
