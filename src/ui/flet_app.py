@@ -1597,7 +1597,7 @@ class FinanzasFletApp:
                         padding=8,
                         content=categories_view,
                     ),
-                ], spacing=10, expand=True)
+                ], spacing=10, expand=True, scroll=ft.ScrollMode.AUTO)
             )
         )
 
