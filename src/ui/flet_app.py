@@ -49,8 +49,9 @@ _ERROR     = "#E53935"
 _WARN      = "#FB8C00"
 
 REPORTS_DIR = BASE_DIR / "reportes"
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.3.0-beta.2"
 GITHUB_RELEASE_LATEST_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases/latest"
+GITHUB_RELEASES_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases?per_page=25"
 try:
     REPORTS_DIR.mkdir(exist_ok=True)
 except Exception:
@@ -742,28 +743,55 @@ class FinanzasFletApp:
         s = (v or "").strip().lower()
         if s.startswith("v"):
             s = s[1:]
+        m = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:[-.]?(alpha|beta|rc)[.-]?(\d+)?)?", s)
+        if m:
+            major = int(m.group(1))
+            minor = int(m.group(2))
+            patch = int(m.group(3))
+            pre = (m.group(4) or "").lower()
+            pre_num = int(m.group(5) or 0)
+            pre_rank = {"alpha": 0, "beta": 1, "rc": 2}.get(pre, 3)
+            return (major, minor, patch, pre_rank, pre_num)
+
         s = re.sub(r"[^0-9.]", "", s)
         parts = [int(p) for p in s.split(".") if p.isdigit()]
         while len(parts) < 3:
             parts.append(0)
-        return tuple(parts[:3])
+        return (parts[0], parts[1], parts[2], 3, 0)
 
     def _is_newer_version(self, latest_tag: str) -> bool:
         return self._version_tuple(latest_tag) > self._version_tuple(APP_VERSION)
 
-    def _fetch_latest_release(self) -> Optional[Dict]:
+    def _release_payload_to_info(self, payload: Dict) -> Dict:
+        return {
+            "tag": str(payload.get("tag_name") or "").strip(),
+            "url": str(payload.get("html_url") or "").strip(),
+            "notes": str(payload.get("body") or "").strip(),
+            "prerelease": bool(payload.get("prerelease", False)),
+        }
+
+    def _fetch_latest_release(self, include_beta: bool = False) -> Optional[Dict]:
+        url = GITHUB_RELEASES_API if include_beta else GITHUB_RELEASE_LATEST_API
         req = urlrequest.Request(
-            GITHUB_RELEASE_LATEST_API,
+            url,
             headers={"User-Agent": f"RBP/{APP_VERSION}"},
         )
         try:
             with urlrequest.urlopen(req, timeout=8) as resp:
                 payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
-                return {
-                    "tag": str(payload.get("tag_name") or "").strip(),
-                    "url": str(payload.get("html_url") or "").strip(),
-                    "notes": str(payload.get("body") or "").strip(),
-                }
+                if not include_beta:
+                    return self._release_payload_to_info(payload)
+
+                if not isinstance(payload, list):
+                    return None
+
+                for rel in payload:
+                    if not isinstance(rel, dict):
+                        continue
+                    if bool(rel.get("draft", False)):
+                        continue
+                    return self._release_payload_to_info(rel)
+                return None
         except urlerror.URLError:
             return None
         except Exception:
@@ -832,15 +860,19 @@ class FinanzasFletApp:
         dlg.open = True
         self.page.update()
 
-    def _check_for_updates(self, manual: bool = False):
+    def _check_for_updates(self, manual: bool = False, include_beta: Optional[bool] = None):
+        if include_beta is None:
+            include_beta = self._get_bool_setting("include_beta_updates", False)
+
         today_key = date.today().isoformat()
+        check_key = "update_last_check_date_beta" if include_beta else "update_last_check_date_stable"
         if not manual:
-            last_check = self.service.get_setting("update_last_check_date", "")
+            last_check = self.service.get_setting(check_key, "")
             if last_check == today_key:
                 return
 
-        latest = self._fetch_latest_release()
-        self.service.set_setting("update_last_check_date", today_key)
+        latest = self._fetch_latest_release(include_beta=bool(include_beta))
+        self.service.set_setting(check_key, today_key)
 
         if not latest or not latest.get("tag"):
             if manual:
@@ -853,7 +885,10 @@ class FinanzasFletApp:
 
         if not is_new:
             if manual:
-                self._snack("Ya tienes la versión más reciente.")
+                if include_beta:
+                    self._snack("Ya tienes la versión más reciente (incluyendo beta).")
+                else:
+                    self._snack("Ya tienes la versión más reciente.")
             return
 
         if not manual:
@@ -1571,6 +1606,7 @@ class FinanzasFletApp:
     def _build_settings_tab(self) -> ft.Tab:
         period_mode = self.service.get_period_mode()
         auto_export = self._get_bool_setting("auto_export_close_period", False)
+        include_beta_updates = self._get_bool_setting("include_beta_updates", False)
         q_day_1 = self.service._get_int_setting("quincenal_pay_day_1", 1)
         q_day_2 = self.service._get_int_setting("quincenal_pay_day_2", 16)
         m_day = self.service._get_int_setting("monthly_pay_day", 1)
@@ -1588,6 +1624,11 @@ class FinanzasFletApp:
         auto_sw = ft.Switch(
             label="Exportación automática al cerrar período",
             value=auto_export,
+        )
+
+        beta_sw = ft.Switch(
+            label="Incluir versiones beta en actualizaciones",
+            value=include_beta_updates,
         )
 
         q_day_1_tf = ft.TextField(
@@ -1649,6 +1690,7 @@ class FinanzasFletApp:
             self.service.set_setting("monthly_pay_day", str(md))
             self.service.set_period_mode(mode)
             self._set_bool_setting("auto_export_close_period", bool(auto_sw.value))
+            self._set_bool_setting("include_beta_updates", bool(beta_sw.value))
             if mode == "mensual":
                 self._vc = 1
             else:
@@ -1659,7 +1701,7 @@ class FinanzasFletApp:
             self._snack("Configuración general guardada.")
 
         def on_check_updates(_):
-            self._check_for_updates(manual=True)
+            self._check_for_updates(manual=True, include_beta=bool(beta_sw.value))
 
         new_cat = ft.TextField(label="Nueva categoría", hint_text="Ej: Educación", width=260)
 
@@ -1762,7 +1804,7 @@ class FinanzasFletApp:
                     ft.Text("Personaliza frecuencia, días de cobro, exportación y categorías.", size=12, color=_SUBTITLE),
                     ft.Divider(),
                     ft.Text("General", size=16, weight=ft.FontWeight.W_600),
-                    ft.Row([mode_dd, auto_sw], spacing=16, wrap=True),
+                    ft.Row([mode_dd, auto_sw, beta_sw], spacing=16, wrap=True),
                     ft.Row([q_day_1_tf, q_day_2_tf, m_day_tf], spacing=16, wrap=True),
                     ft.Text(
                         "Los días de cobro se aplican automáticamente en cada período.\n"
