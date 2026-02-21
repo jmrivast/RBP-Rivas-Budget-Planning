@@ -31,8 +31,8 @@ jobs:
       - name: Build portable app (unsigned)
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP_onedir --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
-          Compress-Archive -Path .\dist\RBP_onedir\* -DestinationPath .\dist\RBP-Windows-Portable-unsigned.zip -Force
+          python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
+          Compress-Archive -Path .\dist\RBP\* -DestinationPath .\dist\RBP-Windows-Portable-unsigned.zip -Force
 
       - name: Detect SignPath configuration
         id: sign_mode
@@ -80,8 +80,8 @@ jobs:
         if: ${{ steps.sign_mode.outputs.mode == 'selfsigned' }}
         shell: pwsh
         run: |
-          $exe = Get-ChildItem .\dist\RBP_onedir -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
-          if (-not $exe) { throw 'No EXE found in dist/RBP_onedir' }
+          $exe = Get-ChildItem .\dist\RBP -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
+          if (-not $exe) { throw 'No EXE found in dist/RBP' }
 
           $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=RBP Community Build" -CertStoreLocation "Cert:\CurrentUser\My" -NotAfter (Get-Date).AddYears(1)
           Export-Certificate -Cert $cert -FilePath .\dist\RBP-SelfSigned-CodeSigning.cer | Out-Null
@@ -101,12 +101,12 @@ jobs:
             "Signing mode: signpath" | Set-Content .\dist\SIGNING-MODE.txt -Encoding UTF8
           }
           else {
-            Compress-Archive -Path .\dist\RBP_onedir\* -DestinationPath .\dist\RBP-Windows-Portable-signed.zip -Force
+            Compress-Archive -Path .\dist\RBP\* -DestinationPath .\dist\RBP-Windows-Portable-signed.zip -Force
             "Signing mode: selfsigned (free fallback)" | Set-Content .\dist\SIGNING-MODE.txt -Encoding UTF8
           }
 
-          $exe = Get-ChildItem .\dist\RBP_onedir -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
-          if (-not $exe) { throw 'No EXE found in dist/RBP_onedir' }
+          $exe = Get-ChildItem .\dist\RBP -Recurse -File | Where-Object { $_.Extension -eq '.exe' } | Select-Object -First 1
+          if (-not $exe) { throw 'No EXE found in dist/RBP' }
 
           $exeHash = (Get-FileHash -Algorithm SHA256 $exe.FullName).Hash
           $zipHash = (Get-FileHash -Algorithm SHA256 .\dist\RBP-Windows-Portable-signed.zip).Hash
