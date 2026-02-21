@@ -120,17 +120,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: ${{ github.event_name == 'release' && steps.sign_mode.outputs.mode == 'signpath' }}
         with:
+          fail_on_unmatched_files: true
           files: |
-            .\dist\RBP-Windows-Portable-signed.zip
-            .\dist\SHA256SUMS.txt
-            .\dist\SIGNING-MODE.txt
+            ./dist/RBP-Windows-Portable-signed.zip
+            ./dist/SHA256SUMS.txt
+            ./dist/SIGNING-MODE.txt
 
       - name: Upload signed assets to GitHub Release (self-signed)
         uses: softprops/action-gh-release@v2
         if: ${{ github.event_name == 'release' && steps.sign_mode.outputs.mode == 'selfsigned' }}
         with:
+          fail_on_unmatched_files: true
           files: |
-            .\dist\RBP-Windows-Portable-signed.zip
-            .\dist\SHA256SUMS.txt
-            .\dist\SIGNING-MODE.txt
-            .\dist\RBP-SelfSigned-CodeSigning.cer
+            ./dist/RBP-Windows-Portable-signed.zip
+            ./dist/SHA256SUMS.txt
+            ./dist/SIGNING-MODE.txt
+            ./dist/RBP-SelfSigned-CodeSigning.cer
