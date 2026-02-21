@@ -6,7 +6,7 @@ categoría, exportación CSV, reportes PDF estéticos y alerta de quincena.
 """
 from __future__ import annotations
 
-import base64, csv, ctypes, io, json, logging, math, os, re, shutil, sys, webbrowser, zipfile
+import base64, csv, ctypes, io, json, logging, math, os, re, shutil, subprocess, sys, webbrowser, zipfile
 from multiprocessing import freeze_support
 from calendar import monthrange
 from collections import defaultdict
@@ -859,6 +859,33 @@ class FinanzasFletApp:
         raw = (tag or "").strip().replace(" ", "_")
         return re.sub(r"[^a-zA-Z0-9._-]", "_", raw)
 
+    def _refresh_desktop_shortcut(self, exe_path: Path):
+        """Crear/actualizar acceso directo en escritorio apuntando a la versión más reciente."""
+        if os.name != "nt":
+            return
+        try:
+            desktop = Path(os.path.expanduser("~")) / "Desktop"
+            shortcut_path = desktop / "RBP.lnk"
+
+            ps_script = f"""
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut('{str(shortcut_path).replace("'", "''")}')
+$Shortcut.TargetPath = '{str(exe_path).replace("'", "''")}'
+$Shortcut.WorkingDirectory = '{str(exe_path.parent).replace("'", "''")}'
+$Shortcut.IconLocation = '{str(exe_path).replace("'", "''")},0'
+$Shortcut.Description = 'RBP - Rivas Budget Planning'
+$Shortcut.Save()
+"""
+
+            subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_script],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except Exception:
+            logger.exception("desktop_shortcut_update")
+
     def _download_and_prepare_update(self, latest: Dict) -> bool:
         tag = str(latest.get("tag") or "").strip()
         asset_url = str(latest.get("asset_url") or "").strip()
@@ -920,6 +947,7 @@ class FinanzasFletApp:
 
             if exe_path and exe_path.exists():
                 try:
+                    self._refresh_desktop_shortcut(exe_path)
                     if os.name == "nt":
                         os.startfile(str(exe_path))
                     else:
