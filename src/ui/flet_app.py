@@ -968,6 +968,7 @@ foreach ($desk in $desktopPaths) {{
                                         legacy_roots: List[Path]):
         """Lanza proceso separado que abre app nueva, cierra la vieja y limpia updates."""
         old_pid = os.getpid()
+        old_base_dir = str(BASE_DIR)
         legacy_roots_array = "@(" + ", ".join(
             [f"'{self._ps_escape(str(p))}'" for p in legacy_roots]
         ) + ")"
@@ -976,6 +977,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 $oldPid = {old_pid}
 $exePath = '{self._ps_escape(str(exe_path))}'
 $workDir = '{self._ps_escape(str(exe_path.parent))}'
+$oldBaseDir = '{self._ps_escape(old_base_dir)}'
 $updatesRoot = '{self._ps_escape(str(updates_root))}'
 $keepDir = '{self._ps_escape(str(keep_dir))}'
 $keepZip = '{self._ps_escape(str(keep_zip))}'
@@ -1025,9 +1027,19 @@ function Update-RbpShortcut {{
 
 Start-Sleep -Milliseconds 600
 Update-RbpShortcut
-Start-Process -FilePath $exePath -WorkingDirectory $workDir
+$newProc = Start-Process -FilePath $exePath -WorkingDirectory $workDir -PassThru
 Start-Sleep -Milliseconds 800
 try {{ Start-Process -FilePath 'taskkill.exe' -ArgumentList "/PID $oldPid /T /F" -WindowStyle Hidden -Wait }} catch {{}}
+
+# Refuerzo: matar procesos del ejecutable viejo que queden colgados
+try {{
+    $procs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {{ $_.ExecutablePath -and $_.ExecutablePath.StartsWith($oldBaseDir, [System.StringComparison]::OrdinalIgnoreCase) }}
+    foreach ($p in $procs) {{
+        if ($newProc -and $p.ProcessId -eq $newProc.Id) {{ continue }}
+        try {{ Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }} catch {{}}
+    }}
+}} catch {{}}
 
 if (Test-Path $updatesRoot) {{
     Get-ChildItem -Path $updatesRoot -Directory -Filter 'RBP_*' -ErrorAction SilentlyContinue |
@@ -1063,6 +1075,18 @@ foreach ($legacy in $legacyRoots) {{
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+    @staticmethod
+    def _schedule_self_termination(delay_seconds: float = 3.0):
+        """Cierre de respaldo si el finalizador externo no logra tumbar la instancia vieja."""
+        def _kill_self():
+            try:
+                os._exit(0)
+            except Exception:
+                pass
+        timer = threading.Timer(delay_seconds, _kill_self)
+        timer.daemon = True
+        timer.start()
 
     def _download_and_prepare_update(self, latest: Dict) -> bool:
         tag = str(latest.get("tag") or "").strip()
@@ -1129,6 +1153,7 @@ foreach ($legacy in $legacyRoots) {{
                         self._launch_windows_update_finalize(
                             exe_path, updates_root, target_dir, zip_path, legacy_roots
                         )
+                        self._schedule_self_termination(3.0)
                     else:
                         self._refresh_desktop_shortcut(exe_path)
                         if os.name == "nt":
