@@ -7,6 +7,7 @@ categoría, exportación CSV, reportes PDF estéticos y alerta de quincena.
 from __future__ import annotations
 
 import base64, csv, ctypes, io, logging, math, os, sys
+from multiprocessing import freeze_support
 from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime
@@ -2087,4 +2088,5 @@ def run_app():
 
 
 if __name__ == "__main__":
+    freeze_support()
     run_app()

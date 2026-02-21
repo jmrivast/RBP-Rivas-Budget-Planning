@@ -3,6 +3,7 @@
 Script principal para ejecutar la aplicación.
 """
 import sys
+from multiprocessing import freeze_support
 from pathlib import Path
 
 # Agregar el directorio del proyecto al path
@@ -12,4 +13,5 @@ sys.path.insert(0, str(PROJECT_DIR))
 from src.ui.flet_app import run_app
 
 if __name__ == "__main__":
+    freeze_support()
     run_app()
