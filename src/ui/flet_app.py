@@ -859,9 +859,39 @@ class FinanzasFletApp:
         raw = (tag or "").strip().replace(" ", "_")
         return re.sub(r"[^a-zA-Z0-9._-]", "_", raw)
 
-        @staticmethod
-        def _ps_escape(value: str) -> str:
-                return str(value).replace("'", "''")
+    @staticmethod
+    def _ps_escape(value: str) -> str:
+        return str(value).replace("'", "''")
+
+    def _resolve_updates_root(self) -> Path:
+        if os.name == "nt":
+            base = os.getenv("LOCALAPPDATA") or os.getenv("USERPROFILE")
+            if base:
+                root = Path(base) / "RBP_updates"
+                root.mkdir(parents=True, exist_ok=True)
+                return root
+        root = BASE_DIR.parent / "RBP_updates"
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
+    def _legacy_updates_roots(self, current_root: Path) -> List[Path]:
+        candidates = [
+            BASE_DIR.parent / "RBP_updates",
+            Path(os.path.expanduser("~")) / "Downloads" / "RBP_updates",
+        ]
+        out: List[Path] = []
+        seen = {str(current_root.resolve())}
+        for p in candidates:
+            try:
+                r = p.resolve()
+            except Exception:
+                r = p
+            key = str(r)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(r)
+        return out
 
     def _refresh_desktop_shortcut(self, exe_path: Path):
         """Crear/actualizar acceso directo en escritorio apuntando a la versión más reciente."""
@@ -918,11 +948,15 @@ foreach ($desk in $desktopPaths) {{
         except Exception:
             logger.exception("desktop_shortcut_update")
 
-        def _launch_windows_update_finalize(self, exe_path: Path, updates_root: Path,
-                                                                                keep_dir: Path, keep_zip: Path):
-                """Lanza proceso separado que abre app nueva, cierra la vieja y limpia updates."""
-                old_pid = os.getpid()
-                ps_script = f"""
+    def _launch_windows_update_finalize(self, exe_path: Path, updates_root: Path,
+                                        keep_dir: Path, keep_zip: Path,
+                                        legacy_roots: List[Path]):
+        """Lanza proceso separado que abre app nueva, cierra la vieja y limpia updates."""
+        old_pid = os.getpid()
+        legacy_roots_array = "@(" + ", ".join(
+            [f"'{self._ps_escape(str(p))}'" for p in legacy_roots]
+        ) + ")"
+        ps_script = f"""
 $ErrorActionPreference = 'SilentlyContinue'
 $oldPid = {old_pid}
 $exePath = '{self._ps_escape(str(exe_path))}'
@@ -930,6 +964,7 @@ $workDir = '{self._ps_escape(str(exe_path.parent))}'
 $updatesRoot = '{self._ps_escape(str(updates_root))}'
 $keepDir = '{self._ps_escape(str(keep_dir))}'
 $keepZip = '{self._ps_escape(str(keep_zip))}'
+$legacyRoots = {legacy_roots_array}
 
 function Update-RbpShortcut {{
     $WshShell = New-Object -ComObject WScript.Shell
@@ -977,7 +1012,7 @@ Start-Sleep -Milliseconds 600
 Update-RbpShortcut
 Start-Process -FilePath $exePath -WorkingDirectory $workDir
 Start-Sleep -Milliseconds 800
-try {{ Stop-Process -Id $oldPid -Force }} catch {{}}
+try {{ Start-Process -FilePath 'taskkill.exe' -ArgumentList "/PID $oldPid /T /F" -WindowStyle Hidden -Wait }} catch {{}}
 
 if (Test-Path $updatesRoot) {{
     Get-ChildItem -Path $updatesRoot -Directory -Filter 'RBP_*' -ErrorAction SilentlyContinue |
@@ -988,17 +1023,31 @@ if (Test-Path $updatesRoot) {{
         Where-Object {{ $_.FullName -ne $keepZip }} |
         ForEach-Object {{ Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }}
 }}
+
+foreach ($legacy in $legacyRoots) {{
+    if (-not $legacy) {{ continue }}
+    if (-not (Test-Path $legacy)) {{ continue }}
+
+    Get-ChildItem -Path $legacy -Directory -Filter 'RBP_updates' -ErrorAction SilentlyContinue |
+        ForEach-Object {{ Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }}
+
+    Get-ChildItem -Path $legacy -Directory -Filter 'RBP_*' -ErrorAction SilentlyContinue |
+        ForEach-Object {{ Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }}
+
+    Get-ChildItem -Path $legacy -File -Filter '*.zip' -ErrorAction SilentlyContinue |
+        ForEach-Object {{ Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }}
+}}
 """
-                creation_flags = 0
-                creation_flags |= getattr(subprocess, "DETACHED_PROCESS", 0)
-                creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-                creation_flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
-                subprocess.Popen(
-                        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", ps_script],
-                        creationflags=creation_flags,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                )
+        creation_flags = 0
+        creation_flags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+        creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        creation_flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", ps_script],
+            creationflags=creation_flags,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def _download_and_prepare_update(self, latest: Dict) -> bool:
         tag = str(latest.get("tag") or "").strip()
@@ -1009,8 +1058,8 @@ if (Test-Path $updatesRoot) {{
             self._snack("No se encontró archivo instalable en la release.", error=True)
             return False
 
-        updates_root = BASE_DIR.parent / "RBP_updates"
-        updates_root.mkdir(parents=True, exist_ok=True)
+        updates_root = self._resolve_updates_root()
+        legacy_roots = self._legacy_updates_roots(updates_root)
 
         tag_safe = self._safe_tag_name(tag)
         zip_path = updates_root / f"{tag_safe}.zip"
@@ -1062,7 +1111,9 @@ if (Test-Path $updatesRoot) {{
             if exe_path and exe_path.exists():
                 try:
                     if os.name == "nt":
-                        self._launch_windows_update_finalize(exe_path, updates_root, target_dir, zip_path)
+                        self._launch_windows_update_finalize(
+                            exe_path, updates_root, target_dir, zip_path, legacy_roots
+                        )
                     else:
                         self._refresh_desktop_shortcut(exe_path)
                         if os.name == "nt":
