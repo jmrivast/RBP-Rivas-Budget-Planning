@@ -449,8 +449,6 @@ class FinanceService:
         d2 = self._get_int_setting("quincenal_pay_day_2", 16)
         if d1 == d2:
             d2 = 16 if d1 != 16 else 15
-        if d1 > d2:
-            d1, d2 = d2, d1
         return d1, d2
 
     def get_monthly_payday(self) -> int:
@@ -543,18 +541,35 @@ class FinanceService:
         if custom:
             return custom
         d1, d2 = self.get_quincenal_paydays()
-        d1 = self._safe_day(y, m, d1)
-        d2 = self._safe_day(y, m, d2)
 
-        if c == 1:
-            start = date(y, m, d1)
-            end = date(y, m, max(d1, d2 - 1))
+        # Caso normal: Q1 inicia antes que Q2 dentro del mismo mes.
+        if d1 < d2:
+            d1_cur = self._safe_day(y, m, d1)
+            d2_cur = self._safe_day(y, m, d2)
+            if c == 1:
+                start = date(y, m, d1_cur)
+                end = date(y, m, max(d1_cur, d2_cur - 1))
+                return start.isoformat(), end.isoformat()
+
+            start = date(y, m, d2_cur)
+            ny, nm = self._next_month(y, m)
+            next_d1 = self._safe_day(ny, nm, d1)
+            end = date(ny, nm, next_d1) - timedelta(days=1)
             return start.isoformat(), end.isoformat()
 
-        start = date(y, m, d2)
-        ny, nm = self._next_month(y, m)
-        next_d1 = self._safe_day(ny, nm, d1)
-        end = date(ny, nm, next_d1) - timedelta(days=1)
+        # Caso cruzado: Q1 inicia en mes anterior (ej. 30) y termina antes de Q2 (ej. 15).
+        py, pm = (y - 1, 12) if m == 1 else (y, m - 1)
+        prev_d1 = self._safe_day(py, pm, d1)
+        d1_cur = self._safe_day(y, m, d1)
+        d2_cur = self._safe_day(y, m, d2)
+
+        if c == 1:
+            start = date(py, pm, prev_d1)
+            end = date(y, m, max(1, d2_cur - 1))
+            return start.isoformat(), end.isoformat()
+
+        start = date(y, m, d2_cur)
+        end = date(y, m, max(d2_cur, d1_cur - 1))
         return start.isoformat(), end.isoformat()
 
     # ── dashboard ──
@@ -2086,9 +2101,6 @@ foreach ($legacy in $legacyRoots) {{
                 return
             if q1 == q2:
                 self._snack("Los dos días de cobro quincenal no pueden ser iguales.", error=True)
-                return
-            if q1 > q2:
-                self._snack("En quincenal, el día 1 debe ser menor que el día 2.", error=True)
                 return
 
             self.service.set_setting("quincenal_pay_day_1", str(q1))
