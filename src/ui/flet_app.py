@@ -6,13 +6,15 @@ categoría, exportación CSV, reportes PDF estéticos y alerta de quincena.
 """
 from __future__ import annotations
 
-import base64, csv, ctypes, io, logging, math, os, sys
+import base64, csv, ctypes, io, json, logging, math, os, re, sys, webbrowser
 from multiprocessing import freeze_support
 from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
+from urllib import error as urlerror
+from urllib import request as urlrequest
 
 import flet as ft
 from fpdf import FPDF
@@ -47,6 +49,8 @@ _ERROR     = "#E53935"
 _WARN      = "#FB8C00"
 
 REPORTS_DIR = BASE_DIR / "reportes"
+APP_VERSION = "1.2.1"
+GITHUB_RELEASE_LATEST_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases/latest"
 try:
     REPORTS_DIR.mkdir(exist_ok=True)
 except Exception:
@@ -279,11 +283,13 @@ class FinanceService:
             raise ValueError("No se puede eliminar una categoría en uso.")
         self.db.delete_category(category_id)
 
-    def add_expense(self, amount, description, category_id, date_text):
+    def add_expense(self, amount, description, category_id, date_text, source: str = "sueldo"):
+        src = (source or "sueldo").strip().lower()
+        status = "completed_savings" if src == "ahorro" else "completed_salary"
         d = datetime.strptime(date_text, "%Y-%m-%d").date()
         self.db.create_expense(self.user_id, amount, description.strip(),
                                date_text, self.get_cycle_for_date(d),
-                               [category_id], "completed")
+                               [category_id], status)
 
     def add_fixed_payment(self, name, amount, due_day, category_id):
         self.db.create_fixed_payment(self.user_id, name.strip(), amount,
@@ -326,9 +332,19 @@ class FinanceService:
         t = date.today()
         self.db.record_savings(self.user_id, amount, t.year, t.month,
                                self.get_cycle_for_date(t))
+    def get_period_savings(self, year: int, month: int, cycle: int) -> float:
+        row = self.db.get_savings_by_quincenal(self.user_id, year, month, cycle)
+        if not row:
+            return 0.0
+        return float(row.get("last_quincenal_savings") or 0)
     def get_total_savings(self): return float(self.db.get_total_savings(self.user_id))
     def withdraw_savings(self, amount) -> bool:
         return self.db.withdraw_savings(self.user_id, amount)
+
+    @staticmethod
+    def _is_savings_expense(status: str) -> bool:
+        st = (status or "").strip().lower()
+        return st in ("completed_savings", "savings")
 
     # ── metas de ahorro ──
     def add_savings_goal(self, name, target):
@@ -510,15 +526,21 @@ class FinanceService:
         expenses      = self.db.get_expenses_by_custom_range(self.user_id, start_d, end_d)
         fixed_payments= self.get_fixed_payments_for_period(year, month, cycle)
         total_savings = self.get_total_savings()
+        period_savings = self.get_period_savings(year, month, cycle)
         total_loans   = self.get_total_unpaid_loans()
         salary        = self.get_salary() if period_mode == "mensual" else self.get_salary_for_period(year, month, cycle)
         extra_income  = self.db.get_total_extra_income_by_custom_range(self.user_id, start_d, end_d)
 
         total_expenses = sum(float(e["amount"]) for e in expenses)
+        total_expenses_salary = sum(
+            float(e["amount"]) for e in expenses
+            if not self._is_savings_expense(str(e.get("status") or ""))
+        )
+        total_expenses_savings = total_expenses - total_expenses_salary
         total_fixed    = sum(float(p["amount"]) for p in fixed_payments)
 
-        dinero_inicial   = salary + extra_income - total_savings
-        dinero_disponible= dinero_inicial - total_expenses - total_fixed - total_loans
+        dinero_inicial   = salary + extra_income - period_savings
+        dinero_disponible= dinero_inicial - total_expenses_salary - total_fixed - total_loans
 
         # promedio diario
         daily: Dict[str,float] = defaultdict(float)
@@ -576,7 +598,10 @@ class FinanceService:
             "dinero_inicial":dinero_inicial,
             "total_expenses":total_expenses,
             "total_fixed":total_fixed, "total_loans":total_loans,
+            "period_savings":period_savings,
             "total_savings":total_savings,
+            "total_expenses_salary":total_expenses_salary,
+            "total_expenses_savings":total_expenses_savings,
             "dinero_disponible":dinero_disponible,
             "avg_daily":avg_daily,
             "expense_count":len(expenses), "fixed_count":len(fixed_payments),
@@ -709,6 +734,132 @@ class FinanzasFletApp:
 
     def _set_bool_setting(self, key: str, value: bool):
         self.service.set_setting(key, "1" if value else "0")
+
+    @staticmethod
+    def _version_tuple(v: str):
+        s = (v or "").strip().lower()
+        if s.startswith("v"):
+            s = s[1:]
+        s = re.sub(r"[^0-9.]", "", s)
+        parts = [int(p) for p in s.split(".") if p.isdigit()]
+        while len(parts) < 3:
+            parts.append(0)
+        return tuple(parts[:3])
+
+    def _is_newer_version(self, latest_tag: str) -> bool:
+        return self._version_tuple(latest_tag) > self._version_tuple(APP_VERSION)
+
+    def _fetch_latest_release(self) -> Optional[Dict]:
+        req = urlrequest.Request(
+            GITHUB_RELEASE_LATEST_API,
+            headers={"User-Agent": f"RBP/{APP_VERSION}"},
+        )
+        try:
+            with urlrequest.urlopen(req, timeout=8) as resp:
+                payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                return {
+                    "tag": str(payload.get("tag_name") or "").strip(),
+                    "url": str(payload.get("html_url") or "").strip(),
+                    "notes": str(payload.get("body") or "").strip(),
+                }
+        except urlerror.URLError:
+            return None
+        except Exception:
+            logger.exception("update_fetch")
+            return None
+
+    def _open_update_dialog(self, latest: Dict, manual: bool = False):
+        if not self.page:
+            return
+        tag = latest.get("tag", "")
+        url = latest.get("url", "")
+        notes = latest.get("notes", "")
+        notes_preview = (notes[:300] + "...") if len(notes) > 300 else notes
+
+        def on_download(_):
+            try:
+                if os.name == "nt" and url:
+                    os.startfile(url)
+                elif url:
+                    webbrowser.open(url)
+            except Exception:
+                logger.exception("open_update_url")
+            dlg.open = False
+            self.page.update()
+            self._snack("Se abrió la descarga de la nueva versión.")
+
+        def on_later(_):
+            self.service.set_setting("update_snoozed_version", tag)
+            dlg.open = False
+            self.page.update()
+            self._snack("Te lo recordaré luego.")
+
+        def on_close(_):
+            dlg.open = False
+            self.page.update()
+
+        actions = [
+            ft.TextButton("Cerrar", on_click=on_close),
+            ft.OutlinedButton("Recordármelo luego", on_click=on_later),
+            ft.FilledButton("Descargar", icon=ft.Icons.DOWNLOAD, on_click=on_download,
+                            style=ft.ButtonStyle(bgcolor=_PRIMARY)),
+        ]
+        if manual:
+            actions = [
+                ft.TextButton("Cerrar", on_click=on_close),
+                ft.FilledButton("Descargar", icon=ft.Icons.DOWNLOAD, on_click=on_download,
+                                style=ft.ButtonStyle(bgcolor=_PRIMARY)),
+            ]
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("Actualización disponible", weight=ft.FontWeight.BOLD, color=_PRIMARY),
+            content=ft.Container(
+                width=420,
+                content=ft.Column([
+                    ft.Text(f"Versión actual: v{APP_VERSION}"),
+                    ft.Text(f"Nueva versión: {tag}", weight=ft.FontWeight.W_600),
+                    ft.Container(height=6),
+                    ft.Text("Novedades:", size=12, color=_SUBTITLE),
+                    ft.Text(notes_preview or "Sin notas de versión.", size=12),
+                ], spacing=6, tight=True),
+            ),
+            actions=actions,
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.overlay.append(dlg)
+        dlg.open = True
+        self.page.update()
+
+    def _check_for_updates(self, manual: bool = False):
+        today_key = date.today().isoformat()
+        if not manual:
+            last_check = self.service.get_setting("update_last_check_date", "")
+            if last_check == today_key:
+                return
+
+        latest = self._fetch_latest_release()
+        self.service.set_setting("update_last_check_date", today_key)
+
+        if not latest or not latest.get("tag"):
+            if manual:
+                self._snack("No se pudo verificar actualizaciones ahora mismo.", error=True)
+            return
+
+        latest_tag = latest["tag"]
+        self.service.set_setting("update_last_seen_version", latest_tag)
+        is_new = self._is_newer_version(latest_tag)
+
+        if not is_new:
+            if manual:
+                self._snack("Ya tienes la versión más reciente.")
+            return
+
+        if not manual:
+            snoozed = self.service.get_setting("update_snoozed_version", "")
+            if snoozed == latest_tag:
+                return
+
+        self._open_update_dialog(latest, manual=manual)
 
     def _reload_ui(self):
         if not self.page:
@@ -1193,24 +1344,46 @@ class FinanzasFletApp:
         df=ft.TextField(label="Fecha",value=date.today().strftime("%Y-%m-%d"),width=200)
         df_row = self._date_field_row(df)
         ca=ft.Dropdown(label="Categoria",options=self._cat_opts(),width=260)
+        src=ft.Dropdown(
+            label="Descontar de",
+            width=260,
+            value="sueldo",
+            options=[
+                ft.dropdown.Option("sueldo", "Sueldo del período"),
+                ft.dropdown.Option("ahorro", "Ahorro total"),
+            ],
+        )
         def on_save(_):
             a=(am.value or "").strip(); d=(de.value or "").strip()
             dt=(df.value or "").strip(); c=ca.value
+            source = (src.value or "sueldo").strip().lower()
             if not all([a,d,dt,c]): self._snack("Completa todo.",error=True); return
             try:
                 v=float(a)
                 if v<=0: raise ValueError
             except ValueError: self._snack("Monto invalido.",error=True); return
             if not self._vdate(dt): self._snack("Fecha invalida.",error=True); return
-            try: self.service.add_expense(v,d,int(c),dt)
-            except Exception: self._snack("No se pudo guardar el gasto.",error=True); return
-            am.value="";de.value="";df.value=date.today().strftime("%Y-%m-%d");ca.value=None
+            deducted_from_savings = False
+            if source == "ahorro":
+                if not self.service.withdraw_savings(v):
+                    self._snack("Fondos insuficientes en ahorro.", error=True); return
+                deducted_from_savings = True
+            try:
+                self.service.add_expense(v,d,int(c),dt,source=source)
+            except Exception:
+                if deducted_from_savings:
+                    try:
+                        self.service.add_savings(v)
+                    except Exception:
+                        logger.exception("rollback_savings_expense")
+                self._snack("No se pudo guardar el gasto.",error=True); return
+            am.value="";de.value="";df.value=date.today().strftime("%Y-%m-%d");ca.value=None; src.value="sueldo"
             self._refresh_all(); self._snack("Gasto guardado.")
         return ft.Tab(text="Nuevo gasto", icon=ft.Icons.ADD_CIRCLE_OUTLINE,
             content=ft.Container(expand=True, padding=ft.padding.only(top=24,left=8),
                 content=ft.Column([
                     ft.Text("Registrar gasto",size=18,weight=ft.FontWeight.W_600),
-                    ft.Container(height=4), am,de,df_row,ca, ft.Container(height=8),
+                    ft.Container(height=4), am,de,df_row,ca,src, ft.Container(height=8),
                     ft.FilledButton("Guardar gasto",icon=ft.Icons.SAVE,on_click=on_save,
                                     style=ft.ButtonStyle(bgcolor=_PRIMARY)),
                 ],spacing=10)))
@@ -1246,9 +1419,12 @@ class FinanzasFletApp:
                 ],spacing=10,expand=True)))
 
     def _build_savings_tab(self) -> ft.Tab:
-        dep_f = ft.TextField(label="Depositar RD$",hint_text="7500",
+        period_saved = self.service.get_period_savings(self._vy, self._vm, self._vc)
+        total_saved = self.service.get_total_savings()
+
+        dep_f = ft.TextField(label="Depositar en este período RD$",hint_text="7500",
                              keyboard_type=ft.KeyboardType.NUMBER,width=260)
-        wit_f = ft.TextField(label="Retirar RD$",hint_text="2000",
+        wit_f = ft.TextField(label="Retirar del ahorro total RD$",hint_text="2000",
                              keyboard_type=ft.KeyboardType.NUMBER,width=260)
         gn = ft.TextField(label="Nombre meta",hint_text="Viaje",width=260)
         ga = ft.TextField(label="Meta RD$",hint_text="100000",
@@ -1292,12 +1468,40 @@ class FinanzasFletApp:
             content=ft.Container(expand=True, padding=ft.padding.only(top=16,left=8),
                 content=ft.Column([
                     ft.Text("Ahorro",size=18,weight=ft.FontWeight.W_600),
-                    ft.Row([dep_f,
-                            ft.FilledButton("Depositar",icon=ft.Icons.ADD,on_click=on_dep,
-                                            style=ft.ButtonStyle(bgcolor=_SUCCESS))],spacing=10),
-                    ft.Row([wit_f,
-                            ft.FilledButton("Retirar",icon=ft.Icons.REMOVE,on_click=on_wit,
-                                            style=ft.ButtonStyle(bgcolor=_WARN))],spacing=10),
+                    ft.ResponsiveRow([
+                        ft.Container(
+                            col={"xs":12,"md":6},
+                            padding=10,
+                            border_radius=10,
+                            border=ft.border.all(1,_CARD_BD),
+                            bgcolor=_CARD_BG,
+                            content=ft.Column([
+                                ft.Text("Ahorro de este período", size=14, weight=ft.FontWeight.W_600),
+                                ft.Text(f"Actual: {format_currency(period_saved)}", size=12, color=_SUBTITLE),
+                                ft.Row([
+                                    dep_f,
+                                    ft.FilledButton("Depositar",icon=ft.Icons.ADD,on_click=on_dep,
+                                                    style=ft.ButtonStyle(bgcolor=_SUCCESS)),
+                                ], spacing=10),
+                            ], spacing=8),
+                        ),
+                        ft.Container(
+                            col={"xs":12,"md":6},
+                            padding=10,
+                            border_radius=10,
+                            border=ft.border.all(1,_CARD_BD),
+                            bgcolor=_CARD_BG,
+                            content=ft.Column([
+                                ft.Text("Ahorro total", size=14, weight=ft.FontWeight.W_600),
+                                ft.Text(f"Disponible: {format_currency(total_saved)}", size=12, color=_SUBTITLE),
+                                ft.Row([
+                                    wit_f,
+                                    ft.FilledButton("Retirar",icon=ft.Icons.REMOVE,on_click=on_wit,
+                                                    style=ft.ButtonStyle(bgcolor=_WARN)),
+                                ], spacing=10),
+                            ], spacing=8),
+                        ),
+                    ], spacing=12, run_spacing=12),
                     ft.Divider(),
                     ft.Text("Metas de ahorro",size=16,weight=ft.FontWeight.W_600),
                     ft.Container(expand=True, border_radius=12,border=ft.border.all(1,_CARD_BD),
@@ -1455,6 +1659,9 @@ class FinanzasFletApp:
             self._reload_ui()
             self._snack("Configuración general guardada.")
 
+        def on_check_updates(_):
+            self._check_for_updates(manual=True)
+
         new_cat = ft.TextField(label="Nueva categoría", hint_text="Ej: Educación", width=260)
 
         def on_add_category(_):
@@ -1570,6 +1777,11 @@ class FinanzasFletApp:
                         icon=ft.Icons.SAVE,
                         on_click=on_save_general,
                         style=ft.ButtonStyle(bgcolor=_PRIMARY),
+                    ),
+                    ft.OutlinedButton(
+                        "Buscar actualización",
+                        icon=ft.Icons.SYSTEM_UPDATE,
+                        on_click=on_check_updates,
                     ),
                     ft.Divider(),
                     ft.Text("Respaldo y restauración", size=16, weight=ft.FontWeight.W_600),
@@ -2213,6 +2425,8 @@ class FinanzasFletApp:
         else:
             try: self._check_quincenal_alert()
             except Exception: logger.exception("alert")
+            try: self._check_for_updates(manual=False)
+            except Exception: logger.exception("auto_update_check")
 
 
 def run_app():
