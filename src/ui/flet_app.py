@@ -316,10 +316,15 @@ class FinanceService:
                                date_text, self.get_cycle_for_date(d),
                                [category_id], status)
 
-    def add_fixed_payment(self, name, amount, due_day, category_id):
+    def add_fixed_payment(self, name, amount, due_day, category_id, no_fixed_date: bool = False):
+        real_due_day = 0 if no_fixed_date else int(due_day)
         self.db.create_fixed_payment(self.user_id, name.strip(), amount,
-                                     due_day, category_id)
+                                     real_due_day, category_id)
     def delete_fixed_payment(self, pid): self.db.delete_fixed_payment(pid)
+
+    def set_fixed_payment_paid(self, payment_id: int, year: int, month: int,
+                               cycle: int, paid: bool):
+        self.db.set_fixed_payment_record_status(payment_id, year, month, cycle, paid)
 
     def get_fixed_payments_for_period(self, year: int, month: int, cycle: int) -> List[Dict]:
         """Pagos fijos que caen dentro del rango visible, con fecha concreta."""
@@ -339,7 +344,16 @@ class FinanceService:
 
         out: List[Dict] = []
         for fp in base:
-            due_day = int(fp.get("due_day") or 1)
+            due_day = int(fp.get("due_day") or 0)
+            if due_day <= 0:
+                item = dict(fp)
+                item["due_date"] = ""
+                item["is_paid"] = self.db.get_fixed_payment_record_status(
+                    int(fp["id"]), year, month, cycle
+                ) == "paid"
+                out.append(item)
+                continue
+
             for y, m in _iter_months(start_d.year, start_d.month, end_d.year, end_d.month):
                 last = monthrange(y, m)[1]
                 day = min(max(1, due_day), last)
@@ -347,9 +361,10 @@ class FinanceService:
                 if start_d <= due_dt <= end_d:
                     item = dict(fp)
                     item["due_date"] = due_dt.isoformat()
+                    item["is_paid"] = False
                     out.append(item)
                     break
-        out.sort(key=lambda x: x.get("due_date", ""))
+        out.sort(key=lambda x: (x.get("due_date", "") == "", x.get("due_date", ""), str(x.get("name", ""))))
         return out
 
     # ── ahorro ──
@@ -566,7 +581,10 @@ class FinanceService:
             if not self._is_savings_expense(str(e.get("status") or ""))
         )
         total_expenses_savings = total_expenses - total_expenses_salary
-        total_fixed    = sum(float(p["amount"]) for p in fixed_payments)
+        total_fixed    = sum(
+            float(p["amount"]) for p in fixed_payments
+            if int(p.get("due_day") or 0) > 0 or bool(p.get("is_paid"))
+        )
 
         dinero_inicial   = salary + extra_income - period_savings
         dinero_disponible= dinero_inicial - total_expenses_salary - total_fixed - total_loans
@@ -606,6 +624,18 @@ class FinanceService:
         # Agregar vencimientos de pagos fijos cuando llegue su fecha
         for fp in fixed_payments:
             due_date = str(fp.get("due_date") or "")
+            if int(fp.get("due_day") or 0) <= 0:
+                if bool(fp.get("is_paid")):
+                    formatted_recent.append({
+                        "date": today_str,
+                        "description": f'Pago fijo pagado: {fp.get("name", "(sin nombre)")}',
+                        "amount": float(fp.get("amount") or 0),
+                        "categories": "Pago fijo",
+                        "type": "fixed_due",
+                        "id": fp.get("id"),
+                        "raw": fp,
+                    })
+                continue
             if due_date and due_date <= today_str:
                 formatted_recent.append({
                     "date": due_date,
@@ -1565,18 +1595,41 @@ class FinanzasFletApp:
         nf=ft.TextField(label="Nombre",hint_text="Netflix",width=260)
         af=ft.TextField(label="Monto RD$",hint_text="270",keyboard_type=ft.KeyboardType.NUMBER,width=200)
         dayf=ft.TextField(label="Fecha (dia del mes)",hint_text="1-31",keyboard_type=ft.KeyboardType.NUMBER,width=170)
+        no_date_cb = ft.Checkbox(label="Sin fecha fija (marcar pagado manualmente)", value=False)
         cf=ft.Dropdown(label="Categoria (opc.)",options=self._cat_opts(),width=260)
+
+        def on_toggle_no_date(_):
+            dayf.disabled = bool(no_date_cb.value)
+            if no_date_cb.value:
+                dayf.value = ""
+            if self.page:
+                self.page.update()
+
+        no_date_cb.on_change = on_toggle_no_date
+
         def on_save(_):
             n=(nf.value or "").strip(); a=(af.value or "").strip(); d=(dayf.value or "").strip()
-            if not all([n,a,d]): self._snack("Completa campos.",error=True); return
+            if not all([n,a]): self._snack("Completa campos.",error=True); return
             try:
-                v=float(a); day=int(d)
-                if v<=0 or not(1<=day<=31): raise ValueError
+                v=float(a)
+                if v<=0: raise ValueError
             except ValueError: self._snack("Invalido.",error=True); return
+
+            no_fixed_date = bool(no_date_cb.value)
+            day = 0
+            if not no_fixed_date:
+                if not d:
+                    self._snack("Completa campos.", error=True); return
+                try:
+                    day=int(d)
+                    if not(1<=day<=31): raise ValueError
+                except ValueError:
+                    self._snack("Invalido.",error=True); return
+
             cid=int(cf.value) if cf.value else None
-            try: self.service.add_fixed_payment(n,v,day,cid)
+            try: self.service.add_fixed_payment(n,v,day,cid,no_fixed_date=no_fixed_date)
             except Exception: self._snack("No se pudo guardar el pago fijo.",error=True); return
-            nf.value="";af.value="";dayf.value="";cf.value=None
+            nf.value="";af.value="";dayf.value="";cf.value=None; no_date_cb.value=False; dayf.disabled=False
             self._refresh_all(); self._snack("Pago fijo guardado.")
         return ft.Tab(text="Pagos fijos", icon=ft.Icons.REPEAT,
             content=ft.Container(expand=True, padding=ft.padding.only(top=16,left=8),
@@ -1586,7 +1639,7 @@ class FinanzasFletApp:
                                  bgcolor=_CARD_BG,padding=8,content=self.fixed_list),
                     ft.Divider(),
                     ft.Text("Agregar pago fijo",size=16,weight=ft.FontWeight.W_600),
-                    nf,af,dayf,cf,ft.Container(height=8),
+                    nf,af,dayf,no_date_cb,cf,ft.Container(height=8),
                     ft.FilledButton("Guardar",icon=ft.Icons.SAVE,on_click=on_save,
                                     style=ft.ButtonStyle(bgcolor=_PRIMARY)),
                 ],spacing=10,expand=True)))
@@ -2079,15 +2132,37 @@ class FinanzasFletApp:
             self.fixed_list.controls.append(ft.Text("Sin pagos fijos",italic=True,color=_SUBTITLE))
         for fp in fps:
             pid=fp["id"]
-            due_label = fp.get("due_date") or str(fp.get("due_day", "-"))
+            no_fixed_date = int(fp.get("due_day") or 0) <= 0
+            paid = bool(fp.get("is_paid"))
+            due_label = "Sin fecha fija" if no_fixed_date else (fp.get("due_date") or str(fp.get("due_day", "-")))
+            status_txt = "PAGADO" if paid else "PENDIENTE"
+            status_color = _SUCCESS if paid else _WARN
+            extra_actions = []
+            if no_fixed_date:
+                extra_actions.append(
+                    ft.IconButton(
+                        ft.Icons.UNDO if paid else ft.Icons.CHECK_CIRCLE_OUTLINE,
+                        icon_color=_SUCCESS if not paid else _WARN,
+                        icon_size=20,
+                        tooltip="Desmarcar pago" if paid else "Marcar pagado",
+                        on_click=lambda _, _pid=pid, _paid=paid: self._set_fixed_paid(_pid, not _paid),
+                    )
+                )
             self.fixed_list.controls.append(ft.Container(
                 padding=ft.padding.symmetric(horizontal=12,vertical=8),
                 border_radius=8,bgcolor="#F5F5F5",
                 content=ft.Row([
                     ft.Column([ft.Text(fp["name"],weight=ft.FontWeight.W_500),
-                               ft.Text(f'Fecha {due_label}',size=12,color=_SUBTITLE)],
+                               ft.Text(("Pago manual" if no_fixed_date else "Fecha") + f' {due_label}',size=12,color=_SUBTITLE)],
                               spacing=2,expand=True),
+                    *([
+                        ft.Container(padding=ft.padding.symmetric(horizontal=8,vertical=2),
+                                     border_radius=6,bgcolor=status_color,
+                                     content=ft.Text(status_txt,size=11,color="white",
+                                                     weight=ft.FontWeight.BOLD))
+                    ] if no_fixed_date else []),
                     ft.Text(format_currency(float(fp["amount"])),weight=ft.FontWeight.BOLD),
+                    *extra_actions,
                     ft.IconButton(ft.Icons.EDIT_OUTLINED,icon_color=_PRIMARY,icon_size=18,
                                   tooltip="Editar",
                                   on_click=lambda _,_fp=dict(fp):self._open_edit_fixed(_fp)),
@@ -2256,23 +2331,46 @@ class FinanzasFletApp:
         nf = ft.TextField(label="Nombre", value=str(fp["name"]), width=260)
         af = ft.TextField(label="Monto RD$", value=str(float(fp["amount"])),
                           keyboard_type=ft.KeyboardType.NUMBER, width=200)
-        dayf = ft.TextField(label="Dia", value=str(fp["due_day"]),
+        no_fixed_date = int(fp.get("due_day") or 0) <= 0
+        dayf = ft.TextField(label="Dia", value="" if no_fixed_date else str(fp["due_day"]),
                             keyboard_type=ft.KeyboardType.NUMBER, width=120)
+        no_date_cb = ft.Checkbox(label="Sin fecha fija", value=no_fixed_date)
+        dayf.disabled = no_fixed_date
         cf = ft.Dropdown(label="Categoria", options=self._cat_opts(), width=260)
         if fp.get("category_id"):
             cf.value = str(fp["category_id"])
         pid = fp["id"]
 
+        def on_toggle_no_date(_):
+            dayf.disabled = bool(no_date_cb.value)
+            if no_date_cb.value:
+                dayf.value = ""
+            if self.page:
+                self.page.update()
+
+        no_date_cb.on_change = on_toggle_no_date
+
         def on_save(_):
             n = (nf.value or "").strip(); a = (af.value or "").strip()
             d = (dayf.value or "").strip()
-            if not all([n, a, d]):
+            if not all([n, a]):
                 self._snack("Completa campos.", error=True); return
             try:
-                v = float(a); day = int(d)
-                if v <= 0 or not (1 <= day <= 31): raise ValueError
+                v = float(a)
+                if v <= 0: raise ValueError
             except ValueError:
                 self._snack("Inválido.", error=True); return
+
+            day = 0
+            if not bool(no_date_cb.value):
+                if not d:
+                    self._snack("Completa campos.", error=True); return
+                try:
+                    day = int(d)
+                    if not (1 <= day <= 31): raise ValueError
+                except ValueError:
+                    self._snack("Inválido.", error=True); return
+
             cid = int(cf.value) if cf.value else None
             self.service.update_fixed_payment(pid, n, v, day, cid)
             dlg.open = False
@@ -2285,7 +2383,7 @@ class FinanzasFletApp:
 
         dlg = ft.AlertDialog(
             title=ft.Text("Editar pago fijo", weight=ft.FontWeight.BOLD, color=_PRIMARY),
-            content=ft.Column([nf, af, dayf, cf], spacing=10, tight=True, width=340),
+            content=ft.Column([nf, af, dayf, no_date_cb, cf], spacing=10, tight=True, width=340),
             actions=[ft.TextButton("Cancelar", on_click=on_close),
                      ft.FilledButton("Guardar", icon=ft.Icons.SAVE, on_click=on_save,
                                      style=ft.ButtonStyle(bgcolor=_PRIMARY))],
@@ -2423,6 +2521,11 @@ class FinanzasFletApp:
     def _del_fixed(self, pid):
         self.service.delete_fixed_payment(pid); self._refresh_all()
         self._snack("Pago fijo eliminado.")
+
+    def _set_fixed_paid(self, pid: int, paid: bool):
+        self.service.set_fixed_payment_paid(pid, self._vy, self._vm, self._vc, paid)
+        self._refresh_all()
+        self._snack("Pago fijo marcado como pagado." if paid else "Pago fijo marcado como pendiente.")
     def _mark_paid(self, lid):
         self.service.mark_loan_paid(lid); self._refresh_all()
         self._snack("Prestamo pagado.")

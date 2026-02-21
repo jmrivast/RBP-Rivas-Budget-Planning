@@ -556,7 +556,7 @@ class Database:
         if amount is not None:
             updates.append("amount = ?")
             params.append(amount)
-        if due_day:
+        if due_day is not None:
             updates.append("due_day = ?")
             params.append(due_day)
         if category_id:
@@ -576,6 +576,54 @@ class Database:
         self.execute("UPDATE fixed_payments SET is_active = 0 WHERE id = ?", (payment_id,))
         self.commit()
         logger.info(f"Pago fijo eliminado: {payment_id}")
+
+    def get_fixed_payment_record_status(self, fixed_payment_id: int, year: int,
+                                        month: int, quincenal_cycle: int) -> str:
+        """Estado del pago fijo en un período: paid | pending."""
+        cursor = self.execute(
+            """SELECT status FROM fixed_payment_records
+               WHERE fixed_payment_id = ? AND year = ? AND month = ? AND quincenal_cycle = ?
+               ORDER BY id DESC LIMIT 1""",
+            (fixed_payment_id, year, month, quincenal_cycle)
+        )
+        row = cursor.fetchone()
+        return str(row[0]).strip().lower() if row and row[0] else "pending"
+
+    def set_fixed_payment_record_status(self, fixed_payment_id: int, year: int,
+                                        month: int, quincenal_cycle: int,
+                                        paid: bool) -> None:
+        """Marcar/desmarcar pago fijo como pagado en un período."""
+        status = "paid" if paid else "pending"
+        cursor = self.execute(
+            """SELECT id FROM fixed_payment_records
+               WHERE fixed_payment_id = ? AND year = ? AND month = ? AND quincenal_cycle = ?
+               ORDER BY id DESC LIMIT 1""",
+            (fixed_payment_id, year, month, quincenal_cycle)
+        )
+        row = cursor.fetchone()
+
+        if row and row[0] is not None:
+            if paid:
+                self.execute(
+                    "UPDATE fixed_payment_records SET status = ?, paid_date = DATE('now') WHERE id = ?",
+                    (status, int(row[0]))
+                )
+            else:
+                self.execute(
+                    "UPDATE fixed_payment_records SET status = ?, paid_date = NULL WHERE id = ?",
+                    (status, int(row[0]))
+                )
+        else:
+            paid_date = datetime.now().date().isoformat() if paid else None
+            self.execute(
+                """INSERT INTO fixed_payment_records
+                   (fixed_payment_id, year, month, quincenal_cycle, status, paid_date)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (fixed_payment_id, year, month, quincenal_cycle, status, paid_date)
+            )
+
+        self.commit()
+        logger.info(f"Pago fijo {fixed_payment_id} marcado como {status} en {year}-{month:02d} Q{quincenal_cycle}")
     
     # ==================== INGRESOS EXTRAS ====================
     
