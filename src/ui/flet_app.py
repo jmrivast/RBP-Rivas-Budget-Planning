@@ -49,9 +49,33 @@ _ERROR     = "#E53935"
 _WARN      = "#FB8C00"
 
 REPORTS_DIR = BASE_DIR / "reportes"
-APP_VERSION = "1.3.0"
 GITHUB_RELEASE_LATEST_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases/latest"
 GITHUB_RELEASES_API = "https://api.github.com/repos/jmrivast/RBP-Rivas-Budget-Planning/releases?per_page=25"
+
+def _detect_app_version(default_value: str = "1.3.2") -> str:
+    env_v = (os.getenv("RBP_APP_VERSION") or "").strip()
+    if env_v:
+        return env_v.lstrip("v")
+
+    candidates = [
+        BASE_DIR / "VERSION.txt",
+        BASE_DIR / "_internal" / "VERSION.txt",
+    ]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / "VERSION.txt")
+
+    for file_path in candidates:
+        try:
+            if file_path.exists():
+                val = file_path.read_text(encoding="utf-8", errors="ignore").strip()
+                if val:
+                    return val.lstrip("v")
+        except Exception:
+            continue
+    return default_value
+
+APP_VERSION = _detect_app_version("1.3.2")
 try:
     REPORTS_DIR.mkdir(exist_ok=True)
 except Exception:
