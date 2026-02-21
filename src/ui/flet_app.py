@@ -1935,7 +1935,7 @@ class FinanzasFletApp:
                         "Buscar actualización",
                         icon=ft.Icons.SYSTEM_UPDATE,
                         on_click=on_check_updates,
-                        style=ft.ButtonStyle(color=_WARN),
+                        style=ft.ButtonStyle(color=_SUCCESS),
                     ),
                     ft.Divider(),
                     ft.Text("Respaldo y restauración", size=16, weight=ft.FontWeight.W_600),
