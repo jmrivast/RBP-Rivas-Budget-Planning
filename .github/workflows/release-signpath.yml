@@ -136,3 +136,44 @@ jobs:
             ./dist/SHA256SUMS.txt
             ./dist/SIGNING-MODE.txt
             ./dist/RBP-SelfSigned-CodeSigning.cer
+
+      - name: Ensure release notes include download instructions
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const release = context.payload.release;
+            if (!release) {
+              core.info('No release payload found.');
+              return;
+            }
+
+            const marker = '## Descarga e instalación';
+            const instructions = `${marker}
+
+- Descarga **RBP-Windows-Portable-signed.zip** desde los assets de esta release.
+- Extrae el ZIP completo en una carpeta nueva.
+- Ejecuta **RBP.exe**.
+- Si aparece SmartScreen: **Más información** → **Ejecutar de todas formas**.
+- Para conservar datos al actualizar: usa **Configuración → Crear respaldo** antes de cambiar de versión.
+`;
+
+            const currentBody = release.body || '';
+            if (currentBody.includes(marker)) {
+              core.info('Instructions block already present.');
+              return;
+            }
+
+            const newBody = `${currentBody}\n\n${instructions}`.trim();
+
+            await github.rest.repos.updateRelease({
+              owner,
+              repo,
+              release_id: release.id,
+              body: newBody,
+            });
+
+            core.info(`Release notes updated for tag ${release.tag_name}`);
