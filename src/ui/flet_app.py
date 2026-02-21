@@ -6,7 +6,7 @@ categoría, exportación CSV, reportes PDF estéticos y alerta de quincena.
 """
 from __future__ import annotations
 
-import base64, csv, ctypes, io, json, logging, math, os, re, sys, webbrowser
+import base64, csv, ctypes, io, json, logging, math, os, re, shutil, sys, webbrowser, zipfile
 from multiprocessing import freeze_support
 from calendar import monthrange
 from collections import defaultdict
@@ -763,12 +763,119 @@ class FinanzasFletApp:
         return self._version_tuple(latest_tag) > self._version_tuple(APP_VERSION)
 
     def _release_payload_to_info(self, payload: Dict) -> Dict:
+        asset_url = ""
+        asset_name = ""
+        assets = payload.get("assets") or []
+        if isinstance(assets, list):
+            preferred = None
+            for a in assets:
+                if not isinstance(a, dict):
+                    continue
+                name = str(a.get("name") or "")
+                if name.lower().endswith(".zip") and "portable" in name.lower():
+                    preferred = a
+                    break
+            if not preferred:
+                for a in assets:
+                    if not isinstance(a, dict):
+                        continue
+                    name = str(a.get("name") or "")
+                    if name.lower().endswith(".zip"):
+                        preferred = a
+                        break
+            if preferred:
+                asset_url = str(preferred.get("browser_download_url") or "").strip()
+                asset_name = str(preferred.get("name") or "").strip()
+
         return {
             "tag": str(payload.get("tag_name") or "").strip(),
             "url": str(payload.get("html_url") or "").strip(),
             "notes": str(payload.get("body") or "").strip(),
             "prerelease": bool(payload.get("prerelease", False)),
+            "asset_url": asset_url,
+            "asset_name": asset_name,
         }
+
+    @staticmethod
+    def _safe_tag_name(tag: str) -> str:
+        raw = (tag or "").strip().replace(" ", "_")
+        return re.sub(r"[^a-zA-Z0-9._-]", "_", raw)
+
+    def _download_and_prepare_update(self, latest: Dict) -> bool:
+        tag = str(latest.get("tag") or "").strip()
+        asset_url = str(latest.get("asset_url") or "").strip()
+        asset_name = str(latest.get("asset_name") or "update.zip").strip() or "update.zip"
+
+        if not tag or not asset_url:
+            self._snack("No se encontró archivo instalable en la release.", error=True)
+            return False
+
+        updates_root = BASE_DIR.parent / "RBP_updates"
+        updates_root.mkdir(parents=True, exist_ok=True)
+
+        tag_safe = self._safe_tag_name(tag)
+        zip_path = updates_root / f"{tag_safe}.zip"
+        target_dir = updates_root / f"RBP_{tag_safe}"
+
+        self._snack("Descargando actualización...")
+        try:
+            req = urlrequest.Request(asset_url, headers={"User-Agent": f"RBP/{APP_VERSION}"})
+            with urlrequest.urlopen(req, timeout=30) as resp, open(zip_path, "wb") as f:
+                while True:
+                    chunk = resp.read(1024 * 256)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+        except Exception:
+            logger.exception("update_download")
+            self._snack("Falló la descarga automática. Se abrirá GitHub.", error=True)
+            return False
+
+        self._snack("Preparando actualización...")
+        try:
+            if target_dir.exists():
+                shutil.rmtree(target_dir, ignore_errors=True)
+            target_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(target_dir)
+
+            # Migrar datos del usuario automáticamente
+            for folder_name in ("data", "backups"):
+                src_dir = BASE_DIR / folder_name
+                dst_dir = target_dir / folder_name
+                if src_dir.exists() and src_dir.is_dir():
+                    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+
+            exe_candidates = [
+                target_dir / "RBP.exe",
+                target_dir / "RBP" / "RBP.exe",
+            ]
+            exe_path = None
+            for cand in exe_candidates:
+                if cand.exists():
+                    exe_path = cand
+                    break
+            if exe_path is None:
+                found = list(target_dir.rglob("RBP.exe"))
+                if found:
+                    exe_path = found[0]
+
+            if exe_path and exe_path.exists():
+                try:
+                    if os.name == "nt":
+                        os.startfile(str(exe_path))
+                    else:
+                        webbrowser.open(str(exe_path))
+                except Exception:
+                    logger.exception("update_launch")
+                self._snack(f"Actualización {tag} lista. Se abrió la nueva app.")
+            else:
+                self._snack(f"Actualización {tag} lista en: {target_dir}")
+            return True
+        except Exception:
+            logger.exception("update_prepare")
+            self._snack("No se pudo preparar la actualización automática.", error=True)
+            return False
 
     def _fetch_latest_release(self, include_beta: bool = False) -> Optional[Dict]:
         url = GITHUB_RELEASES_API if include_beta else GITHUB_RELEASE_LATEST_API
@@ -807,6 +914,11 @@ class FinanzasFletApp:
         notes_preview = (notes[:300] + "...") if len(notes) > 300 else notes
 
         def on_download(_):
+            ok_auto = self._download_and_prepare_update(latest)
+            if ok_auto:
+                dlg.open = False
+                self.page.update()
+                return
             try:
                 if os.name == "nt" and url:
                     os.startfile(url)
