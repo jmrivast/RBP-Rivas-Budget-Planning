@@ -10,7 +10,7 @@ import base64, csv, ctypes, io, logging, math, os, sys
 from multiprocessing import freeze_support
 from calendar import monthrange
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -282,7 +282,7 @@ class FinanceService:
     def add_expense(self, amount, description, category_id, date_text):
         d = datetime.strptime(date_text, "%Y-%m-%d").date()
         self.db.create_expense(self.user_id, amount, description.strip(),
-                               date_text, get_quincenal_cycle(d),
+                               date_text, self.get_cycle_for_date(d),
                                [category_id], "completed")
 
     def add_fixed_payment(self, name, amount, due_day, category_id):
@@ -325,7 +325,7 @@ class FinanceService:
     def add_savings(self, amount):
         t = date.today()
         self.db.record_savings(self.user_id, amount, t.year, t.month,
-                               get_quincenal_cycle(t))
+                               self.get_cycle_for_date(t))
     def get_total_savings(self): return float(self.db.get_total_savings(self.user_id))
     def withdraw_savings(self, amount) -> bool:
         return self.db.withdraw_savings(self.user_id, amount)
@@ -367,14 +367,70 @@ class FinanceService:
         return self.db.get_user_setting(self.user_id, key, default_value)
 
     @staticmethod
+    def _next_month(y: int, m: int):
+        return (y + 1, 1) if m == 12 else (y, m + 1)
+
+    @staticmethod
+    def _safe_day(y: int, m: int, day: int) -> int:
+        _, last = monthrange(y, m)
+        return min(max(1, int(day)), last)
+
+    def _get_int_setting(self, key: str, default_value: int,
+                         min_value: int = 1, max_value: int = 31) -> int:
+        raw = self.get_setting(key, str(default_value))
+        try:
+            val = int(str(raw).strip())
+        except Exception:
+            val = int(default_value)
+        return max(min_value, min(max_value, val))
+
+    def get_quincenal_paydays(self):
+        d1 = self._get_int_setting("quincenal_pay_day_1", 1)
+        d2 = self._get_int_setting("quincenal_pay_day_2", 16)
+        if d1 == d2:
+            d2 = 16 if d1 != 16 else 15
+        if d1 > d2:
+            d1, d2 = d2, d1
+        return d1, d2
+
+    def get_monthly_payday(self) -> int:
+        return self._get_int_setting("monthly_pay_day", 1)
+
+    def get_period_start_days(self, y: int, m: int) -> List[int]:
+        mode = self.get_period_mode()
+        if mode == "mensual":
+            return [self._safe_day(y, m, self.get_monthly_payday())]
+        d1, d2 = self.get_quincenal_paydays()
+        return sorted(set([
+            self._safe_day(y, m, d1),
+            self._safe_day(y, m, d2),
+        ]))
+
+    @staticmethod
     def get_month_range(y: int, m: int):
         _, last = monthrange(y, m)
         return f"{y}-{m:02d}-01", f"{y}-{m:02d}-{last}"
 
+    def get_month_range_by_payday(self, y: int, m: int):
+        pay_day = self._safe_day(y, m, self.get_monthly_payday())
+        start = date(y, m, pay_day)
+        ny, nm = self._next_month(y, m)
+        next_pay_day = self._safe_day(ny, nm, self.get_monthly_payday())
+        end = date(ny, nm, next_pay_day) - timedelta(days=1)
+        return start.isoformat(), end.isoformat()
+
     def get_period_range(self, y: int, m: int, c: int):
         if self.get_period_mode() == "mensual":
-            return self.get_month_range(y, m)
+            return self.get_month_range_by_payday(y, m)
         return self.get_quincena_range(y, m, c)
+
+    def get_cycle_for_date(self, dt: date) -> int:
+        if self.get_period_mode() == "mensual":
+            return 1
+        s1, e1 = self.get_quincena_range(dt.year, dt.month, 1)
+        start_1 = datetime.strptime(s1, "%Y-%m-%d").date()
+        end_1 = datetime.strptime(e1, "%Y-%m-%d").date()
+        return 1 if start_1 <= dt <= end_1 else 2
 
     # ── ingresos extras ──
     def add_income(self, amount, desc, date_text):
@@ -426,19 +482,28 @@ class FinanceService:
         custom = self.db.get_custom_quincena_range(self.user_id, y, m, c)
         if custom:
             return custom
-        from calendar import monthrange
+        d1, d2 = self.get_quincenal_paydays()
+        d1 = self._safe_day(y, m, d1)
+        d2 = self._safe_day(y, m, d2)
+
         if c == 1:
-            return f"{y}-{m:02d}-01", f"{y}-{m:02d}-15"
-        else:
-            _, last = monthrange(y, m)
-            return f"{y}-{m:02d}-16", f"{y}-{m:02d}-{last}"
+            start = date(y, m, d1)
+            end = date(y, m, max(d1, d2 - 1))
+            return start.isoformat(), end.isoformat()
+
+        start = date(y, m, d2)
+        ny, nm = self._next_month(y, m)
+        next_d1 = self._safe_day(ny, nm, d1)
+        end = date(ny, nm, next_d1) - timedelta(days=1)
+        return start.isoformat(), end.isoformat()
 
     # ── dashboard ──
     def get_dashboard_data(self, year=None, month=None, cycle=None) -> Dict:
         t = date.today()
         if year is None:  year  = t.year
         if month is None: month = t.month
-        if cycle is None: cycle = get_quincenal_cycle(t)
+        if cycle is None:
+            cycle = 1 if self.get_period_mode() == "mensual" else self.get_cycle_for_date(t)
         period_mode = self.get_period_mode()
 
         start_d, end_d = self.get_period_range(year, month, cycle)
@@ -579,7 +644,7 @@ class FinanzasFletApp:
 
         # quincena visible en el dashboard
         t = date.today()
-        self._vy, self._vm, self._vc = t.year, t.month, get_quincenal_cycle(t)
+        self._vy, self._vm, self._vc = t.year, t.month, self.service.get_cycle_for_date(t)
 
         # dashboard widgets
         self.lbl_dinero_ini  = ft.Text("RD$0.00", size=20, weight=ft.FontWeight.BOLD)
@@ -916,7 +981,7 @@ class FinanzasFletApp:
         def on_today(_):
             t=date.today()
             self._vy, self._vm = t.year, t.month
-            self._vc = 1 if self.service.get_period_mode() == "mensual" else get_quincenal_cycle(t)
+            self._vc = 1 if self.service.get_period_mode() == "mensual" else self.service.get_cycle_for_date(t)
             self._refresh_all()
 
         def on_pdf(_):
@@ -1303,6 +1368,9 @@ class FinanzasFletApp:
     def _build_settings_tab(self) -> ft.Tab:
         period_mode = self.service.get_period_mode()
         auto_export = self._get_bool_setting("auto_export_close_period", False)
+        q_day_1 = self.service._get_int_setting("quincenal_pay_day_1", 1)
+        q_day_2 = self.service._get_int_setting("quincenal_pay_day_2", 16)
+        m_day = self.service._get_int_setting("monthly_pay_day", 1)
 
         mode_dd = ft.Dropdown(
             label="Frecuencia de reporte y salario",
@@ -1319,8 +1387,63 @@ class FinanzasFletApp:
             value=auto_export,
         )
 
+        q_day_1_tf = ft.TextField(
+            label="Día cobro quincena 1",
+            hint_text="1-31",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            value=str(q_day_1),
+            width=170,
+        )
+        q_day_2_tf = ft.TextField(
+            label="Día cobro quincena 2",
+            hint_text="1-31",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            value=str(q_day_2),
+            width=170,
+        )
+        m_day_tf = ft.TextField(
+            label="Día cobro mensual",
+            hint_text="1-31",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            value=str(m_day),
+            width=170,
+        )
+
+        def _parse_day(text: str, label: str) -> Optional[int]:
+            raw = (text or "").strip()
+            if not raw:
+                self._snack(f"Completa {label}.", error=True)
+                return None
+            if not raw.isdigit():
+                self._snack(f"{label} debe ser un número entre 1 y 31.", error=True)
+                return None
+            day = int(raw)
+            if day < 1 or day > 31:
+                self._snack(f"{label} debe estar entre 1 y 31.", error=True)
+                return None
+            return day
+
         def on_save_general(_):
             mode = (mode_dd.value or "quincenal").strip().lower()
+            q1 = _parse_day(q_day_1_tf.value, "día de cobro quincena 1")
+            if q1 is None:
+                return
+            q2 = _parse_day(q_day_2_tf.value, "día de cobro quincena 2")
+            if q2 is None:
+                return
+            md = _parse_day(m_day_tf.value, "día de cobro mensual")
+            if md is None:
+                return
+            if q1 == q2:
+                self._snack("Los dos días de cobro quincenal no pueden ser iguales.", error=True)
+                return
+            if q1 > q2:
+                self._snack("En quincenal, el día 1 debe ser menor que el día 2.", error=True)
+                return
+
+            self.service.set_setting("quincenal_pay_day_1", str(q1))
+            self.service.set_setting("quincenal_pay_day_2", str(q2))
+            self.service.set_setting("monthly_pay_day", str(md))
             self.service.set_period_mode(mode)
             self._set_bool_setting("auto_export_close_period", bool(auto_sw.value))
             if mode == "mensual":
@@ -1328,7 +1451,7 @@ class FinanzasFletApp:
             else:
                 t = date.today()
                 if self._vy == t.year and self._vm == t.month:
-                    self._vc = get_quincenal_cycle(t)
+                    self._vc = self.service.get_cycle_for_date(t)
             self._reload_ui()
             self._snack("Configuración general guardada.")
 
@@ -1430,10 +1553,18 @@ class FinanzasFletApp:
                 padding=ft.padding.only(top=16, left=8),
                 content=ft.Column([
                     ft.Text("Configuración", size=18, weight=ft.FontWeight.W_600),
-                    ft.Text("Personaliza frecuencia, exportación y categorías.", size=12, color=_SUBTITLE),
+                    ft.Text("Personaliza frecuencia, días de cobro, exportación y categorías.", size=12, color=_SUBTITLE),
                     ft.Divider(),
                     ft.Text("General", size=16, weight=ft.FontWeight.W_600),
                     ft.Row([mode_dd, auto_sw], spacing=16, wrap=True),
+                    ft.Row([q_day_1_tf, q_day_2_tf, m_day_tf], spacing=16, wrap=True),
+                    ft.Text(
+                        "Los días de cobro se aplican automáticamente en cada período.\n"
+                        "Quincenal: Q1 inicia en día 1 y Q2 en día 2.\n"
+                        "Mensual: el mes inicia en ese día y termina el día anterior del próximo mes.",
+                        size=12,
+                        color=_SUBTITLE,
+                    ),
                     ft.FilledButton(
                         "Guardar configuración",
                         icon=ft.Icons.SAVE,
@@ -1898,7 +2029,8 @@ class FinanzasFletApp:
         today = date.today()
 
         if mode == "mensual":
-            if today.day != 1:
+            period_starts = self.service.get_period_start_days(today.year, today.month)
+            if today.day not in period_starts:
                 return
             if today.month == 1:
                 py, pm = today.year - 1, 12
@@ -1908,9 +2040,10 @@ class FinanzasFletApp:
             period_label = f"Mensual {pm:02d}/{py}"
             export_key = f"M:{py}-{pm:02d}"
         else:
-            if today.day not in (1, 16):
+            period_starts = self.service.get_period_start_days(today.year, today.month)
+            if today.day not in period_starts:
                 return
-            py, pm, pc = _prev_q(today.year, today.month, get_quincenal_cycle(today))
+            py, pm, pc = _prev_q(today.year, today.month, self.service.get_cycle_for_date(today))
             period_label = _qlabel(py, pm, pc)
             export_key = f"Q:{py}-{pm:02d}-{pc}"
 
