@@ -650,6 +650,7 @@ class FinanceService:
                         "amount": float(fp.get("amount") or 0),
                         "categories": "Pago fijo",
                         "type": "fixed_due",
+                        "fixed_paid": True,
                         "id": fp.get("id"),
                         "raw": fp,
                     })
@@ -663,6 +664,7 @@ class FinanceService:
                     "amount": float(fp.get("amount") or 0),
                     "categories": "Pago fijo",
                     "type": "fixed_due",
+                    "fixed_paid": True,
                     "id": fp.get("id"),
                     "raw": fp,
                 })
@@ -2370,8 +2372,9 @@ foreach ($legacy in $legacyRoots) {{
         for item in recent_items:
             row_type = item.get("type", "expense")
             is_fixed_due = row_type == "fixed_due"
+            is_fixed_paid = bool(item.get("fixed_paid"))
             row_bg = "#FFF8E1" if is_fixed_due else "#F5F5F5"
-            amount_color = _WARN if is_fixed_due else _ERROR
+            amount_color = _SUCCESS if is_fixed_paid else (_WARN if is_fixed_due else _ERROR)
             cat_str = str(item.get("categories") or "Sin cat.")
             self.recent_list.controls.append(ft.Container(
                 padding=ft.padding.symmetric(horizontal=12,vertical=8),
