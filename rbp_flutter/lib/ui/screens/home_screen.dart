@@ -1,0 +1,437 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
+
+import '../../config/constants.dart';
+import '../../providers/finance_provider.dart';
+import '../../services/update_service.dart';
+import '../../utils/date_helpers.dart' as dh;
+import '../dialogs/update_available_dialog.dart';
+import 'dashboard_tab.dart';
+import 'expense_tab.dart';
+import 'fixed_payments_tab.dart';
+import 'income_tab.dart';
+import 'loans_tab.dart';
+import 'savings_tab.dart';
+import 'settings_tab.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  static const int _tabCount = 7;
+  final _updateService = UpdateService();
+  bool _startupChecksScheduled = false;
+  late final TabController _tabController;
+  int _selectedTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabCount, vsync: this);
+    _tabController.addListener(() {
+      if (!mounted) {
+        return;
+      }
+      final idx = _tabController.index;
+      if (idx == _selectedTab) {
+        return;
+      }
+      setState(() => _selectedTab = idx);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _goRelativeTab(int delta) {
+    final target = (_selectedTab + delta).clamp(0, _tabCount - 1);
+    if (target == _selectedTab) {
+      return;
+    }
+    _tabController.animateTo(target);
+  }
+
+  Widget _buildActiveTab() {
+    switch (_selectedTab) {
+      case 0:
+        return const DashboardTab();
+      case 1:
+        return const IncomeTab();
+      case 2:
+        return const ExpenseTab();
+      case 3:
+        return const FixedPaymentsTab();
+      case 4:
+        return const LoansTab();
+      case 5:
+        return const SavingsTab();
+      case 6:
+      default:
+        return const SettingsTab();
+    }
+  }
+
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) {
+      return;
+    }
+    final dx = event.scrollDelta.dx;
+    final dy = event.scrollDelta.dy;
+    if (dx.abs() <= 12 || dx.abs() <= dy.abs()) {
+      return;
+    }
+    if (dx > 0) {
+      _goRelativeTab(1);
+    } else {
+      _goRelativeTab(-1);
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _maybeScheduleStartupChecks(FinanceProvider finance) {
+    if (_startupChecksScheduled || !finance.initialized) {
+      return;
+    }
+    _startupChecksScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkPeriodCloseAlert(finance);
+      await _checkForUpdates(finance, manual: false);
+      await _checkTrialReminder(finance);
+    });
+  }
+
+  Future<void> _checkTrialReminder(FinanceProvider finance) async {
+    if (!finance.isTrialMode) {
+      return;
+    }
+    final current = int.tryParse(
+          await finance.getSetting('trial_launch_count', defaultValue: '0'),
+        ) ??
+        0;
+    final next = current + 1;
+    await finance.setSetting('trial_launch_count', '$next');
+    if (next % AppLicense.trialReminderInterval != 0) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modo de prueba'),
+          content: const Text(
+            'Activa tu licencia para desbloquear exportes PDF/CSV y quitar el limite de gastos por periodo.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _checkPeriodCloseAlert(FinanceProvider finance) async {
+    final today = DateTime.now();
+    final starts = await finance.getPeriodStartDays(today.year, today.month);
+    if (!starts.contains(today.day)) {
+      return;
+    }
+
+    late int prevYear;
+    late int prevMonth;
+    late int prevCycle;
+    late String exportKey;
+
+    if (finance.periodMode == 'mensual') {
+      final prev = dh.previousMonth(today.year, today.month);
+      prevYear = prev.$1;
+      prevMonth = prev.$2;
+      prevCycle = 1;
+      exportKey = 'M:$prevYear-${prevMonth.toString().padLeft(2, '0')}';
+    } else {
+      final currentCycle = await finance.getCycleForDate(today);
+      final prev = dh.previousQuincena(today.year, today.month, currentCycle);
+      prevYear = prev.year;
+      prevMonth = prev.month;
+      prevCycle = prev.cycle;
+      exportKey = 'Q:$prevYear-${prevMonth.toString().padLeft(2, '0')}-$prevCycle';
+    }
+
+    final autoExport =
+        (await finance.getSetting('auto_export_close_period', defaultValue: 'false')).toLowerCase() == 'true';
+    final lastKey = await finance.getSetting('last_auto_export_key', defaultValue: '');
+
+    final periodRange = await finance.getPeriodRangeFor(prevYear, prevMonth, prevCycle);
+    final periodLabel = dh.formatPeriodLabel(
+      year: prevYear,
+      month: prevMonth,
+      cycle: prevCycle,
+      periodMode: finance.periodMode,
+      startDate: periodRange.$1,
+      endDate: periodRange.$2,
+    );
+
+    if (autoExport && lastKey != exportKey) {
+      try {
+        final pdfPath = await finance.exportPdfForPeriod(prevYear, prevMonth, prevCycle);
+        final csvPath = await finance.exportCsvForPeriod(prevYear, prevMonth, prevCycle);
+        await finance.setSetting('last_auto_export_key', exportKey);
+        _showSnack('Exportacion automatica completada: ${p.basename(pdfPath)} y ${p.basename(csvPath)}');
+      } catch (e) {
+        _showSnack('Fallo la exportacion automatica del periodo cerrado: $e');
+      }
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cierre de periodo'),
+          content: Text('Periodo anterior ($periodLabel) termino.\nDeseas generar el reporte PDF?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('No'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                try {
+                  final path = await finance.exportPdfForPeriod(prevYear, prevMonth, prevCycle);
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                  _showSnack('PDF generado: ${p.basename(path)}');
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                  _showSnack('Error generando PDF: $e');
+                }
+              },
+              icon: const Icon(Icons.picture_as_pdf),
+              label: const Text('Generar PDF'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _checkForUpdates(
+    FinanceProvider finance, {
+    required bool manual,
+    bool? includeBeta,
+  }) async {
+    try {
+      final beta = includeBeta ??
+          (await finance.getSetting('include_beta_updates', defaultValue: 'false')).toLowerCase() == 'true';
+      final today = DateTime.now().toIso8601String().split('T').first;
+      final checkKey = beta ? 'update_last_check_date_beta' : 'update_last_check_date_stable';
+
+      if (!manual) {
+        final lastCheck = await finance.getSetting(checkKey, defaultValue: '');
+        if (lastCheck == today) {
+          return;
+        }
+      }
+
+      final latest = await _updateService.fetchLatest(includeBeta: beta);
+      await finance.setSetting(checkKey, today);
+
+      if (latest == null) {
+        if (manual) {
+          _showSnack('No se pudo verificar actualizaciones ahora mismo.');
+        }
+        return;
+      }
+
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+      final isNewer = UpdateService.isNewerVersion(currentVersion, latest.tag);
+      if (!isNewer) {
+        if (manual) {
+          if (beta) {
+            _showSnack('Ya tienes la version mas reciente (incluyendo beta).');
+          } else {
+            _showSnack('Ya tienes la version mas reciente.');
+          }
+        }
+        return;
+      }
+
+      if (!manual) {
+        final snoozed = await finance.getSetting('update_snoozed_version', defaultValue: '');
+        if (snoozed == latest.tag) {
+          return;
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+      await showUpdateAvailableDialog(
+        context,
+        latest: latest,
+        currentVersion: currentVersion,
+        manual: manual,
+        onSnooze: manual ? null : () => finance.setSetting('update_snoozed_version', latest.tag),
+      );
+    } catch (e) {
+      if (manual) {
+        _showSnack('No se pudo verificar actualizaciones: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final finance = context.read<FinanceProvider>();
+    final initialized = context.select<FinanceProvider, bool>((f) => f.initialized);
+    final isTrialMode = context.select<FinanceProvider, bool>((f) => f.isTrialMode);
+    final startupError = context.select<FinanceProvider, String?>(
+      (f) => f.initialized ? null : f.error,
+    );
+
+    if (startupError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppStrings.appSubtitle)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Error inicializando app:\n$startupError',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!initialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    _maybeScheduleStartupChecks(finance);
+    final tabsWidth = (MediaQuery.of(context).size.width - 48).clamp(0.0, 900.0).toDouble();
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Column(
+            children: [
+              const Row(
+                children: [
+                  Image(
+                    image: AssetImage('assets/Untitled.png'),
+                    width: 34,
+                    height: 34,
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    AppStrings.appSubtitle,
+                    style: TextStyle(fontSize: 14, color: AppColors.subtitle),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: tabsWidth,
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      padding: EdgeInsets.zero,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+                      tabs: const [
+                        Tab(text: 'Resumen', icon: Icon(Icons.dashboard_outlined)),
+                        Tab(text: 'Ingresos', icon: Icon(Icons.attach_money)),
+                        Tab(text: 'Nuevo gasto', icon: Icon(Icons.add_circle_outline)),
+                        Tab(text: 'Pagos fijos', icon: Icon(Icons.repeat)),
+                        Tab(text: 'Prestamos', icon: Icon(Icons.money_off)),
+                        Tab(text: 'Ahorro', icon: Icon(Icons.savings)),
+                        Tab(text: 'Configuracion', icon: Icon(Icons.settings)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              if (isTrialMode)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 8),
+                  color: const Color(0xFFFFF3CD),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: const Text(
+                    'Version de prueba: activa tu licencia para acceso completo.',
+                    style: TextStyle(
+                      color: Color(0xFF8A6D3B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Listener(
+                  onPointerSignal: _onPointerSignal,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragEnd: (details) {
+                      final v = details.primaryVelocity ?? 0;
+                      if (v.abs() < 220) {
+                        return;
+                      }
+                      if (v < 0) {
+                        _goRelativeTab(1);
+                      } else {
+                        _goRelativeTab(-1);
+                      }
+                    },
+                    child: RepaintBoundary(
+                      child: _buildActiveTab(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
