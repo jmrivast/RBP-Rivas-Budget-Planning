@@ -1,4 +1,4 @@
-﻿import 'dart:collection';
+import 'dart:collection';
 
 import '../config/constants.dart';
 import '../data/database/database_helper.dart';
@@ -634,7 +634,7 @@ class FinanceService {
     final fixedPayments = await getFixedPaymentsForPeriod(y, m, c);
     final totalSavings = await getTotalSavings();
     final periodSavings = await getPeriodSavings(y, m, c);
-    final totalLoans = await getTotalUnpaidLoans();
+    final totalLoans = await getTotalLoansAffectingBudget();
     final salary = _periodMode == 'mensual'
         ? await getSalary()
         : await getSalaryForPeriod(y, m, c);
@@ -816,4 +816,3 @@ class FinanceService {
   String _dateIso(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
-

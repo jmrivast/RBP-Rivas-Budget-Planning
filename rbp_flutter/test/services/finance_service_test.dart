@@ -88,6 +88,21 @@ void main() {
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}');
   });
 
+  test('fixed payment can be switched to manual without fixed date', () async {
+    final category = (await service.getCategories()).first;
+    final now = DateTime.now();
+    final cycle = await service.getCycleForDate(now);
+
+    await service.addFixedPayment('Manual', 900, now.day, category.id);
+    await service.updateFixedPayment(1, 'Manual', 900, 0, category.id);
+
+    final list =
+        await service.getFixedPaymentsForPeriod(now.year, now.month, cycle);
+    expect(list.length, 1);
+    expect(list.first.dueDay, 0);
+    expect(list.first.dueDate, '');
+  });
+
   test('loan deduction types are stored', () async {
     await service.addLoan('Juan', 500, 'Ninguno', '2026-02-10',
         deductionType: 'ninguno');
@@ -101,6 +116,32 @@ void main() {
     expect(types.contains('ninguno'), isTrue);
     expect(types.contains('gasto'), isTrue);
     expect(types.contains('ahorro'), isTrue);
+  });
+
+  test('only loans with deduction none affect available budget', () async {
+    final now = DateTime.now();
+    final cycle = await service.getCycleForDate(now);
+    final day = now.day.toString().padLeft(2, '0');
+    final date =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-$day';
+
+    await service.setSalary(10000);
+    await service.addLoan('Pedro', 1000, 'Sin descuento', date,
+        deductionType: 'ninguno');
+    await service.addLoan('Ana', 500, 'Descontado de ahorro', date,
+        deductionType: 'ahorro');
+    await service.addLoan('Luis', 700, 'Descontado como gasto', date,
+        deductionType: 'gasto');
+
+    final data = await service.getDashboardData(
+      year: now.year,
+      month: now.month,
+      cycle: cycle,
+    );
+
+    expect(data.totalLoans, 1000);
+    expect(data.dineroInicial, 10000);
+    expect(data.dineroDisponible, 9000);
   });
 
   test('savings deposit and withdrawal, including insufficient funds',

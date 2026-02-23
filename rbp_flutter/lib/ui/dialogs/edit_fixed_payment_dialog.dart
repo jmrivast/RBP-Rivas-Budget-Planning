@@ -12,7 +12,9 @@ Future<void> showEditFixedPaymentDialog(
 }) async {
   final nameCtrl = TextEditingController(text: payment.name);
   final amountCtrl = TextEditingController(text: payment.amount.toString());
-  final dayCtrl = TextEditingController(text: '${payment.dueDay}');
+  var noFixedDate = payment.dueDay <= 0;
+  final dayCtrl = TextEditingController(
+      text: '${payment.dueDay <= 0 ? 1 : payment.dueDay}');
   int? selectedCategory = payment.categoryId;
 
   await showDialog<void>(
@@ -34,14 +36,26 @@ Future<void> showEditFixedPaymentDialog(
                   const SizedBox(height: 8),
                   TextField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'Monto RD\$'),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: dayCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Dia (0-31)'),
+                    enabled: !noFixedDate,
+                    decoration: const InputDecoration(labelText: 'Dia (1-31)'),
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    value: noFixedDate,
+                    onChanged: (value) =>
+                        setState(() => noFixedDate = value ?? false),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                        'Sin fecha fija (marcar pagado manualmente)'),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
@@ -51,16 +65,15 @@ Future<void> showEditFixedPaymentDialog(
                         value: null,
                         child: Text('Sin categoria'),
                       ),
-                      ...categories
-                          .where((c) => c.id != null)
-                          .map(
+                      ...categories.where((c) => c.id != null).map(
                             (cat) => DropdownMenuItem<int?>(
                               value: cat.id,
                               child: Text(cat.name),
                             ),
                           ),
                     ],
-                    onChanged: (value) => setState(() => selectedCategory = value),
+                    onChanged: (value) =>
+                        setState(() => selectedCategory = value),
                     decoration: const InputDecoration(labelText: 'Categoria'),
                   ),
                 ],
@@ -74,8 +87,12 @@ Future<void> showEditFixedPaymentDialog(
               FilledButton.icon(
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text.trim());
-                  final day = int.tryParse(dayCtrl.text.trim());
-                  if (amount == null || amount <= 0 || day == null || day < 0 || day > 31) {
+                  final day =
+                      noFixedDate ? 0 : int.tryParse(dayCtrl.text.trim());
+                  if (amount == null || amount <= 0) {
+                    return;
+                  }
+                  if (!noFixedDate && (day == null || day < 1 || day > 31)) {
                     return;
                   }
                   if (nameCtrl.text.trim().isEmpty) {
@@ -85,7 +102,7 @@ Future<void> showEditFixedPaymentDialog(
                     payment.id,
                     nameCtrl.text.trim(),
                     amount,
-                    day,
+                    day ?? 0,
                     selectedCategory,
                   );
                   if (context.mounted) {

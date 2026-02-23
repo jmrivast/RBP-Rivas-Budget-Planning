@@ -1,4 +1,6 @@
 class LicenseService {
+  LicenseService({Future<dynamic> Function()? documentsDirectoryProvider});
+
   Future<String> getMachineId() async => 'WEB-NO-LICENSE';
 
   static String generateLicenseKey(String machineId) => 'N/A';

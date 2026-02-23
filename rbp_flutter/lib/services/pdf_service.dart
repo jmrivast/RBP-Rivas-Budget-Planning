@@ -10,10 +10,16 @@ import '../data/models/dashboard_data.dart';
 import '../data/models/loan.dart';
 
 class PdfService {
+  PdfService({
+    Future<Directory> Function()? documentsDirectoryProvider,
+  }) : _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+
   static const double _mm = PdfPageFormat.mm;
   static final PdfColor _primary = PdfColor.fromHex('#1565C0');
   static final PdfColor _primaryLight = PdfColor.fromHex('#E3F2FD');
   static final PdfColor _footerGray = PdfColor.fromHex('#757575');
+  final Future<Directory> Function() _documentsDirectoryProvider;
 
   Future<String> generateDashboardReport({
     required DashboardData dashboard,
@@ -29,15 +35,13 @@ class PdfService {
 
     final logo = await _loadLogo();
     final pendingLoans = loans.where((loan) => !loan.isPaidBool).toList();
-    // Legacy/Flet parity: keep the same report formulas as the previous app.
-    final totalExpenses =
-        dashboard.rawExpenses.fold<double>(0, (sum, e) => sum + e.amount);
-    final totalFixed =
-        dashboard.fixedPayments.fold<double>(0, (sum, f) => sum + f.amount);
-    final totalLoans = pendingLoans.fold<double>(0, (sum, l) => sum + l.amount);
-    final dineroInicial = dashboard.salary + dashboard.extraIncome - dashboard.totalSavings;
-    final dineroDisponible =
-        dineroInicial - totalExpenses - totalFixed - totalLoans;
+    final totalExpenses = dashboard.totalExpensesSalary;
+    final totalFixed = dashboard.totalFixed;
+    final totalLoans = pendingLoans
+        .where(_loanAffectsBudget)
+        .fold<double>(0, (sum, loan) => sum + loan.amount);
+    final dineroInicial = dashboard.dineroInicial;
+    final dineroDisponible = dashboard.dineroDisponible;
 
     final doc = pw.Document();
     doc.addPage(
@@ -97,10 +101,16 @@ class PdfService {
                 if (dashboard.rawExpenses.isNotEmpty) ...[
                   _sectionTitle('Gastos'),
                   _table(
-                    headers: const ['Fecha', 'Descripcion', 'Categoria', 'Monto'],
+                    headers: const [
+                      'Fecha',
+                      'Descripcion',
+                      'Categoria',
+                      'Monto'
+                    ],
                     widthsMm: const [28, 68, 38, 34],
                     rows: dashboard.rawExpenses.map((expense) {
-                      final cats = _categoryNames(expense.categoryIds, dashboard.categoriesById);
+                      final cats = _categoryNames(
+                          expense.categoryIds, dashboard.categoriesById);
                       return [
                         _clip(expense.date, 10),
                         _clip(expense.description, 35),
@@ -228,7 +238,8 @@ class PdfService {
                       row.$2,
                       style: pw.TextStyle(
                         fontSize: 10,
-                        fontWeight: row.$3 ? pw.FontWeight.bold : pw.FontWeight.normal,
+                        fontWeight:
+                            row.$3 ? pw.FontWeight.bold : pw.FontWeight.normal,
                       ),
                     ),
                   ),
@@ -247,7 +258,8 @@ class PdfService {
     Set<int> rightAlignCols = const {},
   }) {
     final widths = <int, pw.TableColumnWidth>{
-      for (var i = 0; i < widthsMm.length; i++) i: pw.FixedColumnWidth(widthsMm[i] * _mm),
+      for (var i = 0; i < widthsMm.length; i++)
+        i: pw.FixedColumnWidth(widthsMm[i] * _mm),
     };
 
     final headerRow = pw.TableRow(
@@ -257,7 +269,9 @@ class PdfService {
           pw.Container(
             height: 7 * _mm,
             padding: const pw.EdgeInsets.symmetric(horizontal: 1.2 * _mm),
-            alignment: rightAlignCols.contains(i) ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+            alignment: rightAlignCols.contains(i)
+                ? pw.Alignment.centerRight
+                : pw.Alignment.centerLeft,
             child: pw.Text(
               headers[i],
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
@@ -274,7 +288,9 @@ class PdfService {
                 pw.Container(
                   height: 6 * _mm,
                   padding: const pw.EdgeInsets.symmetric(horizontal: 1.2 * _mm),
-                  alignment: rightAlignCols.contains(i) ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+                  alignment: rightAlignCols.contains(i)
+                      ? pw.Alignment.centerRight
+                      : pw.Alignment.centerLeft,
                   child: pw.Text(
                     i < row.length ? row[i] : '',
                     style: const pw.TextStyle(fontSize: 9),
@@ -302,7 +318,7 @@ class PdfService {
   }
 
   Future<Directory> _ensureReportsDir() async {
-    final docs = await getApplicationDocumentsDirectory();
+    final docs = await _documentsDirectoryProvider();
     final dir = Directory(p.join(docs.path, 'reportes'));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
@@ -331,6 +347,11 @@ class PdfService {
       return input;
     }
     return input.substring(0, maxLen);
+  }
+
+  bool _loanAffectsBudget(Loan loan) {
+    final deduction = loan.deductionType.trim().toLowerCase();
+    return deduction.isEmpty || deduction == 'ninguno';
   }
 
   String _categoryNames(String? ids, Map<int, String> categoriesById) {

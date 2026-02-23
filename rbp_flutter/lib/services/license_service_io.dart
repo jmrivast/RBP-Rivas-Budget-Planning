@@ -10,10 +10,16 @@ import '../config/platform_config.dart';
 import 'license_key_codec.dart';
 
 class LicenseService {
+  LicenseService({
+    Future<Directory> Function()? documentsDirectoryProvider,
+  }) : _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+
   static const _licenseKeyField = 'license_key';
   static const _activationDateField = 'activation_date';
   static const _machineIdField = 'machine_id';
   static const _licenseFileName = 'license_info.json';
+  final Future<Directory> Function() _documentsDirectoryProvider;
 
   Future<String> getMachineId() async {
     String rawId = '';
@@ -96,7 +102,7 @@ class LicenseService {
   }
 
   Future<File> _licenseFile() async {
-    final docs = await getApplicationDocumentsDirectory();
+    final docs = await _documentsDirectoryProvider();
     return File(p.join(docs.path, 'rbp', _licenseFileName));
   }
 
@@ -114,7 +120,8 @@ class LicenseService {
       if (decoded is! Map<String, dynamic>) {
         return const {};
       }
-      return decoded.map((key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
+      return decoded.map(
+          (key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
     } catch (_) {
       return const {};
     }

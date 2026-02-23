@@ -9,13 +9,21 @@ import '../data/models/dashboard_data.dart';
 import '../data/models/loan.dart';
 
 class CsvService {
+  CsvService({
+    Future<Directory> Function()? documentsDirectoryProvider,
+  }) : _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+
+  final Future<Directory> Function() _documentsDirectoryProvider;
+
   Future<String> exportDashboardCsv({
     required DashboardData dashboard,
     required List<Loan> loans,
     required String periodLabel,
   }) async {
     final reportsDir = await _ensureReportsDir();
-    final suffix = dashboard.periodMode == 'mensual' ? 'M' : 'Q${dashboard.cycle}';
+    final suffix =
+        dashboard.periodMode == 'mensual' ? 'M' : 'Q${dashboard.cycle}';
     final outputPath = p.join(
       reportsDir.path,
       'gastos_${dashboard.year}_${dashboard.month.toString().padLeft(2, '0')}_$suffix.csv',
@@ -43,7 +51,7 @@ class CsvService {
   }
 
   Future<Directory> _ensureReportsDir() async {
-    final docs = await getApplicationDocumentsDirectory();
+    final docs = await _documentsDirectoryProvider();
     final dir = Directory(p.join(docs.path, 'reportes'));
     if (!await dir.exists()) {
       await dir.create(recursive: true);

@@ -27,19 +27,25 @@ class FixedPaymentItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Checkbox(
-            value: payment.isPaid,
-            onChanged: (v) => onTogglePaid(v ?? false),
+          Tooltip(
+            message: 'Marcar como pagado en este periodo',
+            child: Checkbox(
+              value: payment.isPaid,
+              onChanged: (v) => onTogglePaid(v ?? false),
+            ),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(payment.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(payment.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 Text(
                   payment.dueDay <= 0
                       ? 'Pago manual Sin fecha fija'
-                      : (payment.dueDate.isEmpty ? 'Fecha ${payment.dueDay}' : 'Fecha ${payment.dueDate}'),
+                      : (payment.dueDate.isEmpty
+                          ? 'Fecha ${payment.dueDay}'
+                          : 'Fecha ${payment.dueDate}'),
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],

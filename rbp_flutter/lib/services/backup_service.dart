@@ -7,10 +7,15 @@ import 'package:path_provider/path_provider.dart';
 import '../data/database/database_helper.dart';
 
 class BackupService {
-  BackupService({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+  BackupService({
+    DatabaseHelper? dbHelper,
+    Future<Directory> Function()? documentsDirectoryProvider,
+  })  : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+        _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
 
   final DatabaseHelper _dbHelper;
+  final Future<Directory> Function() _documentsDirectoryProvider;
 
   Future<String> createBackup({String? fileName}) async {
     final dbPath = await _resolveDbPath();
@@ -19,7 +24,7 @@ class BackupService {
       throw Exception('No se encontro base de datos para respaldar.');
     }
 
-    final documentsDir = await getApplicationDocumentsDirectory();
+    final documentsDir = await _documentsDirectoryProvider();
     final backupsDir = Directory(p.join(documentsDir.path, 'backups'));
     if (!await backupsDir.exists()) {
       await backupsDir.create(recursive: true);
@@ -50,7 +55,9 @@ class BackupService {
       type: FileType.custom,
       allowedExtensions: ['db', 'sqlite', 'sqlite3'],
     );
-    if (result == null || result.files.isEmpty || result.files.first.path == null) {
+    if (result == null ||
+        result.files.isEmpty ||
+        result.files.first.path == null) {
       return null;
     }
     final sourcePath = result.files.first.path!;
@@ -63,7 +70,7 @@ class BackupService {
   }
 
   Future<String> _resolveDbPath() async {
-    final documents = await getApplicationDocumentsDirectory();
+    final documents = await _documentsDirectoryProvider();
     return p.join(documents.path, 'finanzas.db');
   }
 }

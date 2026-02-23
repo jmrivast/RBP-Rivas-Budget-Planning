@@ -27,6 +27,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   static const int _tabCount = 7;
+  static const List<Widget> _tabViews = [
+    DashboardTab(),
+    IncomeTab(),
+    ExpenseTab(),
+    FixedPaymentsTab(),
+    LoansTab(),
+    SavingsTab(),
+    SettingsTab(),
+  ];
+
   final _updateService = UpdateService();
   bool _startupChecksScheduled = false;
   late final TabController _tabController;
@@ -62,26 +72,6 @@ class _HomeScreenState extends State<HomeScreen>
     _tabController.animateTo(target);
   }
 
-  Widget _buildActiveTab() {
-    switch (_selectedTab) {
-      case 0:
-        return const DashboardTab();
-      case 1:
-        return const IncomeTab();
-      case 2:
-        return const ExpenseTab();
-      case 3:
-        return const FixedPaymentsTab();
-      case 4:
-        return const LoansTab();
-      case 5:
-        return const SavingsTab();
-      case 6:
-      default:
-        return const SettingsTab();
-    }
-  }
-
   void _onPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) {
       return;
@@ -102,7 +92,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _maybeScheduleStartupChecks(FinanceProvider finance) {
@@ -176,14 +167,19 @@ class _HomeScreenState extends State<HomeScreen>
       prevYear = prev.year;
       prevMonth = prev.month;
       prevCycle = prev.cycle;
-      exportKey = 'Q:$prevYear-${prevMonth.toString().padLeft(2, '0')}-$prevCycle';
+      exportKey =
+          'Q:$prevYear-${prevMonth.toString().padLeft(2, '0')}-$prevCycle';
     }
 
-    final autoExport =
-        (await finance.getSetting('auto_export_close_period', defaultValue: 'false')).toLowerCase() == 'true';
-    final lastKey = await finance.getSetting('last_auto_export_key', defaultValue: '');
+    final autoExport = (await finance.getSetting('auto_export_close_period',
+                defaultValue: 'false'))
+            .toLowerCase() ==
+        'true';
+    final lastKey =
+        await finance.getSetting('last_auto_export_key', defaultValue: '');
 
-    final periodRange = await finance.getPeriodRangeFor(prevYear, prevMonth, prevCycle);
+    final periodRange =
+        await finance.getPeriodRangeFor(prevYear, prevMonth, prevCycle);
     final periodLabel = dh.formatPeriodLabel(
       year: prevYear,
       month: prevMonth,
@@ -195,10 +191,13 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (autoExport && lastKey != exportKey) {
       try {
-        final pdfPath = await finance.exportPdfForPeriod(prevYear, prevMonth, prevCycle);
-        final csvPath = await finance.exportCsvForPeriod(prevYear, prevMonth, prevCycle);
+        final pdfPath =
+            await finance.exportPdfForPeriod(prevYear, prevMonth, prevCycle);
+        final csvPath =
+            await finance.exportCsvForPeriod(prevYear, prevMonth, prevCycle);
         await finance.setSetting('last_auto_export_key', exportKey);
-        _showSnack('Exportacion automatica completada: ${p.basename(pdfPath)} y ${p.basename(csvPath)}');
+        _showSnack(
+            'Exportacion automatica completada: ${p.basename(pdfPath)} y ${p.basename(csvPath)}');
       } catch (e) {
         _showSnack('Fallo la exportacion automatica del periodo cerrado: $e');
       }
@@ -213,7 +212,8 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context) {
         return AlertDialog(
           title: const Text('Cierre de periodo'),
-          content: Text('Periodo anterior ($periodLabel) termino.\nDeseas generar el reporte PDF?'),
+          content: Text(
+              'Periodo anterior ($periodLabel) termino.\nDeseas generar el reporte PDF?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -222,7 +222,8 @@ class _HomeScreenState extends State<HomeScreen>
             FilledButton.icon(
               onPressed: () async {
                 try {
-                  final path = await finance.exportPdfForPeriod(prevYear, prevMonth, prevCycle);
+                  final path = await finance.exportPdfForPeriod(
+                      prevYear, prevMonth, prevCycle);
                   if (context.mounted) {
                     Navigator.of(context).pop();
                   }
@@ -250,9 +251,14 @@ class _HomeScreenState extends State<HomeScreen>
   }) async {
     try {
       final beta = includeBeta ??
-          (await finance.getSetting('include_beta_updates', defaultValue: 'false')).toLowerCase() == 'true';
+          (await finance.getSetting('include_beta_updates',
+                      defaultValue: 'false'))
+                  .toLowerCase() ==
+              'true';
       final today = DateTime.now().toIso8601String().split('T').first;
-      final checkKey = beta ? 'update_last_check_date_beta' : 'update_last_check_date_stable';
+      final checkKey = beta
+          ? 'update_last_check_date_beta'
+          : 'update_last_check_date_stable';
 
       if (!manual) {
         final lastCheck = await finance.getSetting(checkKey, defaultValue: '');
@@ -286,7 +292,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
 
       if (!manual) {
-        final snoozed = await finance.getSetting('update_snoozed_version', defaultValue: '');
+        final snoozed = await finance.getSetting('update_snoozed_version',
+            defaultValue: '');
         if (snoozed == latest.tag) {
           return;
         }
@@ -300,7 +307,9 @@ class _HomeScreenState extends State<HomeScreen>
         latest: latest,
         currentVersion: currentVersion,
         manual: manual,
-        onSnooze: manual ? null : () => finance.setSetting('update_snoozed_version', latest.tag),
+        onSnooze: manual
+            ? null
+            : () => finance.setSetting('update_snoozed_version', latest.tag),
       );
     } catch (e) {
       if (manual) {
@@ -312,8 +321,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final finance = context.read<FinanceProvider>();
-    final initialized = context.select<FinanceProvider, bool>((f) => f.initialized);
-    final isTrialMode = context.select<FinanceProvider, bool>((f) => f.isTrialMode);
+    final initialized =
+        context.select<FinanceProvider, bool>((f) => f.initialized);
+    final isTrialMode =
+        context.select<FinanceProvider, bool>((f) => f.isTrialMode);
     final startupError = context.select<FinanceProvider, String?>(
       (f) => f.initialized ? null : f.error,
     );
@@ -340,7 +351,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     _maybeScheduleStartupChecks(finance);
-    final tabsWidth = (MediaQuery.of(context).size.width - 48).clamp(0.0, 900.0).toDouble();
+    final tabsWidth =
+        (MediaQuery.of(context).size.width - 48).clamp(0.0, 900.0).toDouble();
 
     return Scaffold(
       body: SafeArea(
@@ -377,9 +389,13 @@ class _HomeScreenState extends State<HomeScreen>
                       padding: EdgeInsets.zero,
                       labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                       tabs: const [
-                        Tab(text: 'Resumen', icon: Icon(Icons.dashboard_outlined)),
+                        Tab(
+                            text: 'Resumen',
+                            icon: Icon(Icons.dashboard_outlined)),
                         Tab(text: 'Ingresos', icon: Icon(Icons.attach_money)),
-                        Tab(text: 'Nuevo gasto', icon: Icon(Icons.add_circle_outline)),
+                        Tab(
+                            text: 'Nuevo gasto',
+                            icon: Icon(Icons.add_circle_outline)),
                         Tab(text: 'Pagos fijos', icon: Icon(Icons.repeat)),
                         Tab(text: 'Prestamos', icon: Icon(Icons.money_off)),
                         Tab(text: 'Ahorro', icon: Icon(Icons.savings)),
@@ -395,7 +411,8 @@ class _HomeScreenState extends State<HomeScreen>
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 8),
                   color: const Color(0xFFFFF3CD),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: const Text(
                     'Version de prueba: activa tu licencia para acceso completo.',
                     style: TextStyle(
@@ -423,7 +440,10 @@ class _HomeScreenState extends State<HomeScreen>
                       }
                     },
                     child: RepaintBoundary(
-                      child: _buildActiveTab(),
+                      child: IndexedStack(
+                        index: _selectedTab,
+                        children: _tabViews,
+                      ),
                     ),
                   ),
                 ),
