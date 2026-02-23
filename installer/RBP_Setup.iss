@@ -7,7 +7,7 @@
 #define MyAppName "RBP - Rivas Budget Planning"
 #define MyAppPublisher "Rivas Budget Planning"
 #define MyAppExeName "rbp_flutter.exe"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "2.0.0"
 #define SourceRelease "..\\rbp_flutter\\build\\windows\\x64\\runner\\Release"
 
 [Setup]

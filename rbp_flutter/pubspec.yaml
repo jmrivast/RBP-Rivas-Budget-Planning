@@ -1,6 +1,6 @@
 name: rbp_flutter
 description: RBP - Rivas Budget Planning. App de finanzas personales.
-version: 1.0.0+1
+version: 2.0.0+1
 publish_to: 'none'
 
 environment:
@@ -62,5 +62,5 @@ msix_config:
   display_name: RBP - Rivas Budget Planning
   publisher_display_name: Rivas Budget Planning
   identity_name: com.rivasbudget.rbp
-  msix_version: 1.0.0.0
+  msix_version: 2.0.0.0
   logo_path: assets/icon.png
