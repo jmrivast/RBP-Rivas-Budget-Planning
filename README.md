@@ -1,140 +1,41 @@
-# RBP - Rivas Budget Planning
+﻿# RBP - Rivas Budget Planning
 
-Aplicación de escritorio local para finanzas personales hecha con Flet + SQLite.
+Aplicacion de escritorio para control de finanzas personales en Windows.
 
-## Qué incluye
+## Descarga e instalacion (usuarios finales)
 
-- Dashboard con navegación por período.
-- Modo de trabajo **quincenal** o **mensual**.
-- Gestión de ingresos, gastos, pagos fijos, préstamos y ahorro.
-- Categorías personalizables desde **Configuración** (crear, renombrar, eliminar).
-- Exportación a PDF y CSV.
-- Exportación automática al cierre de período (opcional).
-- Respaldo y restauración desde la app.
+1. Ve a la seccion **Releases** de este repositorio.
+2. Descarga el instalador `.exe` mas reciente.
+3. Ejecuta el instalador y sigue el asistente: `Siguiente > Siguiente > Instalar`.
+4. Abre la app desde el acceso directo de escritorio o menu inicio.
 
 ## Requisitos
 
-- Python 3.10+
-- Windows 10/11 (principal objetivo de empaquetado)
+- Windows 10 u 11 (64-bit)
 
-## Instalación local (desarrollo)
+## Funciones principales
 
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
-```
+- Resumen financiero por periodo
+- Modo quincenal o mensual
+- Ingresos, gastos, pagos fijos, prestamos y ahorro
+- Exportacion a PDF y CSV
+- Respaldo y restauracion
+- Configuracion de categorias
 
-Opcional (datos iniciales):
+## Actualizaciones
 
-```bash
-python init_sample_data.py
-```
+- Las nuevas versiones se publican en **Releases**.
+- Se recomienda instalar siempre la ultima version estable.
 
-## Uso rápido
+## Soporte
 
-1. En **Configuración**, elige la frecuencia (`Quincenal` o `Mensual`).
-2. Define salario base y, si aplica, salario por quincena.
-3. Registra ingresos/gastos y revisa el resumen.
-4. Exporta manualmente con botones `PDF` / `CSV` o activa la exportación automática.
+Para soporte tecnico o activacion/licencia, usa los contactos mostrados dentro de la app.
 
-## Configuración en la app
+## Nota de distribucion del repositorio
 
-En la pestaña **Configuración** puedes:
-
-- Cambiar frecuencia de reporte/salario.
-- Activar/desactivar exportación automática al cierre de período.
-- Crear respaldo manual.
-- Restaurar último respaldo.
-- Administrar categorías (agregar, renombrar, eliminar).
-
-## Respaldos y restauración
-
-- Los respaldos se guardan en `backups/`.
-- “Crear respaldo” copia la BD actual con timestamp.
-- “Restaurar último respaldo” reemplaza la BD actual por el más reciente.
-
-Recomendación: antes de restaurar, cerrar la app en otras ventanas/procesos.
-
-## Estructura principal
-
-```text
-src/
-  config.py
-  db/database.py
-  ui/flet_app.py
-  utils/backup.py
-main.py
-requirements.txt
-```
-
-## Build para compartir (Windows)
-
-### Opción recomendada: onedir
-
-```bash
-python -m PyInstaller --noconfirm --clean --noupx --onedir --windowed --name RBP_onedir --icon=icon.ico --add-data "Untitled.png;." --add-data "icon.ico;." main.py
-```
-
-Salida:
-
-- `dist/RBP_onedir/RBP_onedir.exe`
-
-## Descarga para usuarios finales
-
-- Los ejecutables para tus amigos se publican en **GitHub Releases** (no dentro del código fuente del repo).
-- Release actual: `v1.0.0` en la pestaña *Releases*.
-
-## Antivirus y falsos positivos (Windows)
-
-Para reducir falsos positivos con PyInstaller:
-
-- Usa `--onedir` (menos sospechoso que `--onefile` en muchos motores).
-- Usa `--noupx` para evitar compresión de binarios.
-- Usa `--clean` para builds reproducibles.
-- Evita renombrar el `.exe` en cada build sin necesidad.
-- Firma digitalmente el ejecutable (code-signing) cuando sea posible.
-- Si aparece un falso positivo, reporta el hash del binario al proveedor antivirus (por ejemplo, Microsoft Defender).
-
-### Firma gratuita para proyectos open-source (SignPath Foundation)
-
-- Puedes automatizar firma confiable sin pagar certificado directo usando SignPath Foundation + GitHub Actions.
-- Configuración guiada en `SIGNPATH_FOUNDATION_SETUP.md`.
-- Workflow listo en `.github/workflows/release-signpath.yml`.
-
-### Empaquetar en ZIP para enviar
-
-```powershell
-Compress-Archive -Path .\dist\RBP_onedir\* -DestinationPath .\dist\RBP_onedir.zip -Force
-```
-
-## Variables de entorno (opcionales)
-
-Copia `.env.example` a `.env` y ajusta SMTP si usarás notificaciones por email.
-
-## Publicar en GitHub
-
-1. Inicializa git en la carpeta del proyecto.
-2. Crea repositorio en GitHub.
-3. Sube el código (sin `dist/`, `build/`, `data/finanzas.db`, `backups/`, gracias a `.gitignore`).
-
-Comandos base:
-
-```bash
-git init
-git add .
-git commit -m "Initial release"
-git branch -M main
-git remote add origin <TU_REPO_URL>
-git push -u origin main
-```
-
-## Notas
-
-- `src/ui/app.py` y `src/ui/frames/` son legado (CustomTkinter).
-- La entrada activa del proyecto actual es `main.py` -> `src/ui/flet_app.py`.
+Este repositorio se usa como canal de distribucion de binarios para usuarios finales.
 
 ## Licencia
 
-MIT. Ver `LICENSE`.
+Este software se distribuye bajo licencia propietaria.
+Consulta el archivo `LICENSE`.
