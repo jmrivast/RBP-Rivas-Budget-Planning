@@ -5,7 +5,7 @@ Este checklist define el criterio **Go/No-Go** para vender la app Flutter (v2.0)
 ## 1. Alcance de esta release
 
 - Plataforma objetivo: Windows 10/11 x64.
-- Canal: instalador `.exe` (Inno Setup).
+- Canal: instalador `.exe` (NSIS).
 - Versionado: `2.0.0` (primera release Flutter luego de la serie Python/Flet `1.x`).
 
 ## 2. Bloqueantes de salida (deben estar 100% completos)
@@ -33,7 +33,7 @@ Este checklist define el criterio **Go/No-Go** para vender la app Flutter (v2.0)
 - [x] `flutter analyze --no-pub` sin errores.
 - [x] `flutter test --no-pub` 100% verde.
 - [x] `flutter build windows --release` sin errores.
-- [x] Instalador generado sin errores (`ISCC`).
+- [x] Instalador generado sin errores (`makensis`).
 - [x] Instalacion limpia en una PC/VM sin entorno de desarrollo.
 - [x] Desinstalar y reinstalar conserva comportamiento esperado.
 
@@ -71,7 +71,16 @@ Estado actual: **GO**.
 - `flutter analyze --no-pub`: OK
 - `flutter test --no-pub`: OK (27 tests)
 - `flutter build windows --release`: OK
-- Instalador Inno Setup compilado: `dist/RBP_Setup_2.0.0.exe`
+- Instalador NSIS compilado: `dist/RBP_Setup_2.0.0.exe`
 - Instalacion silenciosa: OK
 - Desinstalacion silenciosa: OK
 - Reinstalacion silenciosa: OK
+
+## 10. Evidencia migracion instalador a NSIS (2026-02-25)
+
+- NSIS instalado via `winget`: OK
+- Script de instalador creado: `installer/RBP_Setup.nsi`
+- Script de build reproducible: `installer/build_nsis.ps1`
+- Compilacion NSIS: OK (`dist/RBP_Setup_2.0.0.exe`)
+- Instalacion silenciosa NSIS: OK
+- Desinstalacion silenciosa NSIS: OK

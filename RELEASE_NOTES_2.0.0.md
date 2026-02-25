@@ -9,6 +9,7 @@ Primera version comercial en Flutter para Windows, sucesora de la linea 1.x en P
 ## Cambios principales
 
 - Migracion completa de app desktop a Flutter.
+- Migracion del empaquetado de instalador a NSIS (flujo comercial sin Inno Setup).
 - Paridad funcional de modulos:
   - Resumen
   - Ingresos
@@ -20,7 +21,7 @@ Primera version comercial en Flutter para Windows, sucesora de la linea 1.x en P
 - Exportes PDF y CSV integrados.
 - Respaldo y restauracion de base de datos.
 - Activacion por licencia por equipo.
-- Instalador Inno Setup (`RBP_Setup_2.0.0.exe`).
+- Instalador NSIS (`RBP_Setup_2.0.0.exe`).
 
 ## Estabilidad y rendimiento (v2.0.0)
 
@@ -35,6 +36,5 @@ Primera version comercial en Flutter para Windows, sucesora de la linea 1.x en P
 - `flutter analyze --no-pub`: OK
 - `flutter test --no-pub`: OK
 - `flutter build windows --release`: OK
-- Instalador Inno Setup compilado: OK
+- Instalador NSIS compilado: OK
 - Instalacion, desinstalacion y reinstalacion silenciosa: OK
-

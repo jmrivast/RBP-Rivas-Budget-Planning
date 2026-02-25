@@ -14,7 +14,13 @@ Ejecutable generado:
 
 ## Instalador recomendado
 
-Usa Inno Setup con el script `installer/RBP_Setup.iss` en la raiz del repo.
+Usa NSIS con el script `installer/RBP_Setup.nsi` en la raiz del repo.
+
+Comando recomendado:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ..\installer\build_nsis.ps1 -Version 2.0.0
+```
 
 ## Estado del producto
 
