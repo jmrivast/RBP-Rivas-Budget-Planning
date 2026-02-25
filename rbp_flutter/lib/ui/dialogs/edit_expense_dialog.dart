@@ -19,7 +19,8 @@ Future<void> showEditExpenseDialog(
       .whereType<int>()
       .cast<int?>()
       .toList();
-  int? selectedCategory = firstCategoryId.isEmpty ? null : firstCategoryId.first;
+  int? selectedCategory =
+      firstCategoryId.isEmpty ? null : firstCategoryId.first;
 
   await showDialog<void>(
     context: context,
@@ -35,7 +36,8 @@ Future<void> showEditExpenseDialog(
                 children: [
                   TextField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'Monto RD\$'),
                   ),
                   const SizedBox(height: 8),
@@ -46,7 +48,8 @@ Future<void> showEditExpenseDialog(
                   const SizedBox(height: 8),
                   TextField(
                     controller: dateCtrl,
-                    decoration: const InputDecoration(labelText: 'Fecha (YYYY-MM-DD)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Fecha (YYYY-MM-DD)'),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
@@ -60,7 +63,8 @@ Future<void> showEditExpenseDialog(
                           ),
                         )
                         .toList(),
-                    onChanged: (value) => setState(() => selectedCategory = value),
+                    onChanged: (value) =>
+                        setState(() => selectedCategory = value),
                     decoration: const InputDecoration(labelText: 'Categoria'),
                   ),
                 ],
@@ -77,7 +81,8 @@ Future<void> showEditExpenseDialog(
                   if (amount == null || amount <= 0) {
                     return;
                   }
-                  if (descCtrl.text.trim().isEmpty || selectedCategory == null) {
+                  if (descCtrl.text.trim().isEmpty ||
+                      selectedCategory == null) {
                     return;
                   }
                   await finance.updateExpense(

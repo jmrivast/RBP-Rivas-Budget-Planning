@@ -24,7 +24,8 @@ Future<void> showEditIncomeDialog(
             children: [
               TextField(
                 controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Monto RD\$'),
               ),
               const SizedBox(height: 8),
@@ -35,7 +36,8 @@ Future<void> showEditIncomeDialog(
               const SizedBox(height: 8),
               TextField(
                 controller: dateCtrl,
-                decoration: const InputDecoration(labelText: 'Fecha (YYYY-MM-DD)'),
+                decoration:
+                    const InputDecoration(labelText: 'Fecha (YYYY-MM-DD)'),
               ),
             ],
           ),
@@ -48,7 +50,9 @@ Future<void> showEditIncomeDialog(
           FilledButton.icon(
             onPressed: () async {
               final amount = double.tryParse(amountCtrl.text.trim());
-              if (amount == null || amount <= 0 || descCtrl.text.trim().isEmpty) {
+              if (amount == null ||
+                  amount <= 0 ||
+                  descCtrl.text.trim().isEmpty) {
                 return;
               }
               await finance.updateIncome(

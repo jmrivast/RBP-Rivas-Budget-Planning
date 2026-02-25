@@ -25,9 +25,10 @@ class UpdateService {
 
   Future<ReleaseInfo?> fetchLatest({bool includeBeta = false}) async {
     final uri = Uri.parse(includeBeta ? _releasesApi : _latestApi);
-    final response = await http.get(uri, headers: {'User-Agent': _userAgent}).timeout(
-          const Duration(seconds: 8),
-        );
+    final response =
+        await http.get(uri, headers: {'User-Agent': _userAgent}).timeout(
+      const Duration(seconds: 8),
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       return null;
     }
@@ -87,7 +88,9 @@ class UpdateService {
           continue;
         }
         final name = (item['name'] ?? '').toString().toLowerCase();
-        if (!name.endsWith('.zip') && !name.endsWith('.msix') && !name.endsWith('.exe')) {
+        if (!name.endsWith('.zip') &&
+            !name.endsWith('.msix') &&
+            !name.endsWith('.exe')) {
           continue;
         }
         final candidate = (item['browser_download_url'] ?? '').toString();
@@ -109,7 +112,8 @@ class UpdateService {
   }
 
   static ({List<int> core, String preRelease}) _parseVersion(String raw) {
-    final cleaned = raw.trim().toLowerCase().replaceFirst('v', '').split('+').first;
+    final cleaned =
+        raw.trim().toLowerCase().replaceFirst('v', '').split('+').first;
     final parts = cleaned.split('-');
     final coreRaw = parts.first;
     final pre = parts.length > 1 ? parts.sublist(1).join('-') : '';

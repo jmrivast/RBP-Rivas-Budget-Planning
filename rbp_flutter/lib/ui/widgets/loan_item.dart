@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/loan.dart';
 import '../../utils/currency_formatter.dart';
+import '../theme/app_icon_button.dart';
 
 class LoanItem extends StatelessWidget {
   const LoanItem({
@@ -46,10 +47,11 @@ class LoanItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(loan.person, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(loan.person,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 Text(
                   '${subtitleParts.join(' - ')}$deductionLabel',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(fontSize: 12, color: AppColors.subtitle),
                 ),
               ],
             ),
@@ -75,19 +77,25 @@ class LoanItem extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           if (!paid)
-            IconButton(
+            AppIconButton(
               onPressed: onMarkPaid,
-              icon: const Icon(Icons.check_circle_outline),
+              icon: Icons.check_circle_outline,
+              color: AppColors.success,
+              hoverColor: AppColors.hoverSuccess,
               tooltip: 'Marcar pagado',
             ),
-          IconButton(
+          AppIconButton(
             onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
+            icon: Icons.edit_outlined,
+            color: AppColors.primary,
+            hoverColor: AppColors.hoverPrimary,
             tooltip: 'Editar',
           ),
-          IconButton(
+          AppIconButton(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
+            icon: Icons.delete_outline,
+            color: AppColors.error,
+            hoverColor: AppColors.hoverError,
             tooltip: 'Eliminar',
           ),
         ],

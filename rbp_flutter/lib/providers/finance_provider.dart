@@ -73,7 +73,8 @@ class FinanceProvider extends ChangeNotifier {
       _year = now.year;
       _month = now.month;
       _periodMode = await _service.getPeriodMode();
-      _cycle = _periodMode == 'mensual' ? 1 : await _service.getCycleForDate(now);
+      _cycle =
+          _periodMode == 'mensual' ? 1 : await _service.getCycleForDate(now);
       await refreshAll(notify: false);
       _initialized = true;
       _error = null;
@@ -161,7 +162,8 @@ class FinanceProvider extends ChangeNotifier {
       final now = DateTime.now();
       _year = now.year;
       _month = now.month;
-      _cycle = _periodMode == 'mensual' ? 1 : await _service.getCycleForDate(now);
+      _cycle =
+          _periodMode == 'mensual' ? 1 : await _service.getCycleForDate(now);
     }, refresh: _refreshPeriodViews);
   }
 
@@ -211,7 +213,8 @@ class FinanceProvider extends ChangeNotifier {
     int categoryId,
   ) async {
     await _withMutation(() async {
-      await _service.updateExpense(expenseId, amount, description, date, categoryId);
+      await _service.updateExpense(
+          expenseId, amount, description, date, categoryId);
     }, refresh: _refreshDashboardExpenses);
   }
 
@@ -270,7 +273,8 @@ class FinanceProvider extends ChangeNotifier {
     int? categoryId,
   ) async {
     await _withMutation(() async {
-      await _service.updateFixedPayment(paymentId, name, amount, dueDay, categoryId);
+      await _service.updateFixedPayment(
+          paymentId, name, amount, dueDay, categoryId);
     }, refresh: _refreshDashboardExpenses);
   }
 
@@ -282,7 +286,8 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> toggleFixedPaymentPaid(int paymentId, bool paid) async {
     await _withMutation(() async {
-      await _service.setFixedPaymentPaid(paymentId, _year, _month, _cycle, paid);
+      await _service.setFixedPaymentPaid(
+          paymentId, _year, _month, _cycle, paid);
     }, refresh: _refreshDashboardExpenses);
   }
 
@@ -340,7 +345,8 @@ class FinanceProvider extends ChangeNotifier {
     String deductionType,
   ) async {
     await _withMutation(() async {
-      await _service.updateLoan(loanId, person, amount, description, deductionType);
+      await _service.updateLoan(
+          loanId, person, amount, description, deductionType);
     }, refresh: _refreshDashboardAndLoans);
   }
 

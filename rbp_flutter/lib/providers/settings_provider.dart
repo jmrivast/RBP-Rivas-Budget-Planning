@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../config/constants.dart';
 import 'finance_provider.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -12,6 +13,7 @@ class SettingsProvider extends ChangeNotifier {
   int _payDay2 = 16;
   int _monthlyPayDay = 1;
   double _salary = 0;
+  String _themePreset = AppColors.defaultPresetKey;
   bool _loading = false;
 
   String get periodMode => _periodMode;
@@ -19,6 +21,7 @@ class SettingsProvider extends ChangeNotifier {
   int get payDay2 => _payDay2;
   int get monthlyPayDay => _monthlyPayDay;
   double get salary => _salary;
+  String get themePreset => _themePreset;
   bool get isLoading => _loading;
 
   Future<void> load() async {
@@ -47,9 +50,25 @@ class SettingsProvider extends ChangeNotifier {
           ) ??
           1;
       _salary = await _financeProvider.getSalary();
+      final savedPreset = await _financeProvider.getSetting(
+        'theme_preset',
+        defaultValue: AppColors.defaultPresetKey,
+      );
+      _themePreset = savedPreset;
+      AppColors.applyPreset(_themePreset);
     } finally {
       _setLoading(false);
     }
+  }
+
+  Future<void> loadThemePreset() async {
+    final savedPreset = await _financeProvider.getSetting(
+      'theme_preset',
+      defaultValue: AppColors.defaultPresetKey,
+    );
+    _themePreset = savedPreset;
+    AppColors.applyPreset(_themePreset);
+    notifyListeners();
   }
 
   Future<void> updatePeriodMode(String mode) async {
@@ -74,6 +93,19 @@ class SettingsProvider extends ChangeNotifier {
     await _withReload(() async {
       await _financeProvider.setSalary(value);
     });
+  }
+
+  Future<void> updateThemePreset(String presetKey) async {
+    final nextPreset = AppColors.presets.any((p) => p.key == presetKey)
+        ? presetKey
+        : AppColors.defaultPresetKey;
+    if (_themePreset == nextPreset) {
+      return;
+    }
+    _themePreset = nextPreset;
+    AppColors.applyPreset(_themePreset);
+    await _financeProvider.setSetting('theme_preset', _themePreset);
+    notifyListeners();
   }
 
   Future<void> _withReload(Future<void> Function() action) async {

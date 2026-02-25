@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../services/backup_service.dart';
 import '../../services/update_service.dart';
 import '../dialogs/confirm_dialog.dart';
@@ -47,13 +48,20 @@ class _SettingsTabState extends State<SettingsTab> {
       return;
     }
     _periodMode = finance.periodMode;
-    _q1Ctrl.text = await finance.getSetting('quincenal_pay_day_1', defaultValue: '1');
-    _q2Ctrl.text = await finance.getSetting('quincenal_pay_day_2', defaultValue: '16');
-    _mCtrl.text = await finance.getSetting('monthly_pay_day', defaultValue: '1');
-    _autoExport =
-        (await finance.getSetting('auto_export_close_period', defaultValue: 'false')).toLowerCase() == 'true';
-    _includeBeta =
-        (await finance.getSetting('include_beta_updates', defaultValue: 'false')).toLowerCase() == 'true';
+    _q1Ctrl.text =
+        await finance.getSetting('quincenal_pay_day_1', defaultValue: '1');
+    _q2Ctrl.text =
+        await finance.getSetting('quincenal_pay_day_2', defaultValue: '16');
+    _mCtrl.text =
+        await finance.getSetting('monthly_pay_day', defaultValue: '1');
+    _autoExport = (await finance.getSetting('auto_export_close_period',
+                defaultValue: 'false'))
+            .toLowerCase() ==
+        'true';
+    _includeBeta = (await finance.getSetting('include_beta_updates',
+                defaultValue: 'false'))
+            .toLowerCase() ==
+        'true';
     _loaded = true;
   }
 
@@ -61,7 +69,8 @@ class _SettingsTabState extends State<SettingsTab> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   int? _parseDay(String raw, String label) {
@@ -108,8 +117,11 @@ class _SettingsTabState extends State<SettingsTab> {
   Future<void> _checkForUpdatesManual(FinanceProvider finance) async {
     try {
       final includeBeta = _includeBeta;
-      final release = await _updateService.fetchLatest(includeBeta: includeBeta);
-      final checkKey = includeBeta ? 'update_last_check_date_beta' : 'update_last_check_date_stable';
+      final release =
+          await _updateService.fetchLatest(includeBeta: includeBeta);
+      final checkKey = includeBeta
+          ? 'update_last_check_date_beta'
+          : 'update_last_check_date_stable';
       final today = DateTime.now().toIso8601String().split('T').first;
       await finance.setSetting(checkKey, today);
 
@@ -146,6 +158,7 @@ class _SettingsTabState extends State<SettingsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     return Consumer<FinanceProvider>(
       builder: (context, finance, _) {
         return FutureBuilder<void>(
@@ -160,20 +173,26 @@ class _SettingsTabState extends State<SettingsTab> {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Configuracion', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                        const Text('Configuracion',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Personaliza frecuencia, dias de cobro, exportacion y categorias.',
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.subtitle),
                         ),
                         const SizedBox(height: 10),
                         const Divider(height: 1),
                         const SizedBox(height: 10),
-                        const Text('General', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text('General',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         Card(
                           child: Padding(
@@ -191,19 +210,58 @@ class _SettingsTabState extends State<SettingsTab> {
                                       child: DropdownButtonFormField<String>(
                                         initialValue: _periodMode,
                                         items: const [
-                                          DropdownMenuItem(value: 'quincenal', child: Text('Quincenal')),
-                                          DropdownMenuItem(value: 'mensual', child: Text('Mensual')),
+                                          DropdownMenuItem(
+                                              value: 'quincenal',
+                                              child: Text('Quincenal')),
+                                          DropdownMenuItem(
+                                              value: 'mensual',
+                                              child: Text('Mensual')),
                                         ],
-                                        onChanged: (value) => setState(() => _periodMode = value ?? 'quincenal'),
-                                        decoration: const InputDecoration(labelText: 'Frecuencia de reporte y salario'),
+                                        onChanged: (value) => setState(() =>
+                                            _periodMode = value ?? 'quincenal'),
+                                        decoration: const InputDecoration(
+                                            labelText:
+                                                'Frecuencia de reporte y salario'),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 240,
+                                      child: DropdownButtonFormField<String>(
+                                        key: ValueKey(
+                                            'theme-${settings.themePreset}'),
+                                        initialValue: settings.themePreset,
+                                        items: AppColors.presets
+                                            .map(
+                                              (p) => DropdownMenuItem(
+                                                value: p.key,
+                                                child: Text(p.label),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (value) async {
+                                          if (value == null) {
+                                            return;
+                                          }
+                                          await settings
+                                              .updateThemePreset(value);
+                                          if (context.mounted) {
+                                            _show(
+                                                'Tema aplicado: ${AppColors.presets.firstWhere((p) => p.key == value).label}');
+                                          }
+                                        },
+                                        decoration: const InputDecoration(
+                                          labelText: 'Tema visual',
+                                        ),
                                       ),
                                     ),
                                     SizedBox(
                                       width: 320,
                                       child: SwitchListTile(
                                         value: _autoExport,
-                                        onChanged: (value) => setState(() => _autoExport = value),
-                                        title: const Text('Exportacion automatica al cerrar periodo'),
+                                        onChanged: (value) =>
+                                            setState(() => _autoExport = value),
+                                        title: const Text(
+                                            'Exportacion automatica al cerrar periodo'),
                                         contentPadding: EdgeInsets.zero,
                                       ),
                                     ),
@@ -211,8 +269,10 @@ class _SettingsTabState extends State<SettingsTab> {
                                       width: 340,
                                       child: SwitchListTile(
                                         value: _includeBeta,
-                                        onChanged: (value) => setState(() => _includeBeta = value),
-                                        title: const Text('Incluir versiones beta en actualizaciones'),
+                                        onChanged: (value) => setState(
+                                            () => _includeBeta = value),
+                                        title: const Text(
+                                            'Incluir versiones beta en actualizaciones'),
                                         contentPadding: EdgeInsets.zero,
                                       ),
                                     ),
@@ -228,7 +288,8 @@ class _SettingsTabState extends State<SettingsTab> {
                                       child: TextField(
                                         controller: _q1Ctrl,
                                         keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(labelText: 'Dia cobro quincena 1'),
+                                        decoration: const InputDecoration(
+                                            labelText: 'Dia cobro quincena 1'),
                                       ),
                                     ),
                                     SizedBox(
@@ -236,7 +297,8 @@ class _SettingsTabState extends State<SettingsTab> {
                                       child: TextField(
                                         controller: _q2Ctrl,
                                         keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(labelText: 'Dia cobro quincena 2'),
+                                        decoration: const InputDecoration(
+                                            labelText: 'Dia cobro quincena 2'),
                                       ),
                                     ),
                                     SizedBox(
@@ -244,15 +306,17 @@ class _SettingsTabState extends State<SettingsTab> {
                                       child: TextField(
                                         controller: _mCtrl,
                                         keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(labelText: 'Dia cobro mensual'),
+                                        decoration: const InputDecoration(
+                                            labelText: 'Dia cobro mensual'),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
+                                Text(
                                   'Quincenal: Q1 inicia en dia 1 y Q2 en dia 2.\nMensual: inicia en ese dia y termina el dia anterior del proximo mes.',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                                  style: TextStyle(
+                                      fontSize: 12, color: AppColors.subtitle),
                                 ),
                                 const SizedBox(height: 10),
                                 Wrap(
@@ -265,7 +329,8 @@ class _SettingsTabState extends State<SettingsTab> {
                                       label: const Text('Guardar configuracion'),
                                     ),
                                     OutlinedButton.icon(
-                                      onPressed: () => _checkForUpdatesManual(finance),
+                                      onPressed: () =>
+                                          _checkForUpdatesManual(finance),
                                       icon: const Icon(Icons.system_update),
                                       label: const Text('Buscar actualizacion'),
                                     ),
@@ -278,7 +343,9 @@ class _SettingsTabState extends State<SettingsTab> {
                         const SizedBox(height: 12),
                         const Divider(height: 1),
                         const SizedBox(height: 10),
-                        const Text('Respaldo y restauracion', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text('Respaldo y restauracion',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 10,
@@ -287,7 +354,8 @@ class _SettingsTabState extends State<SettingsTab> {
                             FilledButton.icon(
                               onPressed: () async {
                                 try {
-                                  final path = await _backupService.createBackup();
+                                  final path =
+                                      await _backupService.createBackup();
                                   _show('Respaldo creado: ${p.basename(path)}');
                                 } catch (e) {
                                   _show('No se pudo crear respaldo: $e');
@@ -299,12 +367,14 @@ class _SettingsTabState extends State<SettingsTab> {
                             OutlinedButton.icon(
                               onPressed: () async {
                                 try {
-                                  final source = await _backupService.pickAndRestoreBackup();
+                                  final source = await _backupService
+                                      .pickAndRestoreBackup();
                                   if (source == null) {
                                     return;
                                   }
                                   await finance.refreshAll();
-                                  _show('Respaldo restaurado: ${p.basename(source)}');
+                                  _show(
+                                      'Respaldo restaurado: ${p.basename(source)}');
                                 } catch (e) {
                                   _show('No se pudo restaurar respaldo: $e');
                                 }
@@ -317,7 +387,9 @@ class _SettingsTabState extends State<SettingsTab> {
                         const SizedBox(height: 12),
                         const Divider(height: 1),
                         const SizedBox(height: 10),
-                        const Text('Categorias', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text('Categorias',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 10,
@@ -327,7 +399,9 @@ class _SettingsTabState extends State<SettingsTab> {
                               width: 260,
                               child: TextField(
                                 controller: _newCategoryCtrl,
-                                decoration: const InputDecoration(labelText: 'Nueva categoria', hintText: 'Ej: Educacion'),
+                                decoration: const InputDecoration(
+                                    labelText: 'Nueva categoria',
+                                    hintText: 'Ej: Educacion'),
                               ),
                             ),
                             FilledButton.icon(
@@ -347,7 +421,10 @@ class _SettingsTabState extends State<SettingsTab> {
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Agregar categoria'),
-                              style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                overlayColor: AppColors.hoverSuccess,
+                              ),
                             ),
                           ],
                         ),
@@ -363,19 +440,24 @@ class _SettingsTabState extends State<SettingsTab> {
                               border: Border.all(color: AppColors.cardBorder),
                             ),
                             child: finance.categories.isEmpty
-                                ? const Align(
+                                ? Align(
                                     alignment: Alignment.topLeft,
-                                    child: Text('Sin categorias', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.black54)),
+                                    child: Text('Sin categorias',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                            color: AppColors.subtitle)),
                                   )
                                 : ListView.builder(
                                     itemCount: finance.categories.length,
                                     itemBuilder: (context, index) {
                                       final cat = finance.categories[index];
                                       return Padding(
-                                        padding: const EdgeInsets.only(bottom: 6),
+                                        padding:
+                                            const EdgeInsets.only(bottom: 6),
                                         child: CategoryItem(
                                           category: cat,
-                                          onRename: () => showRenameCategoryDialog(
+                                          onRename: () =>
+                                              showRenameCategoryDialog(
                                             context,
                                             finance: finance,
                                             category: cat,
@@ -384,14 +466,16 @@ class _SettingsTabState extends State<SettingsTab> {
                                             final ok = await showConfirmDialog(
                                               context,
                                               title: 'Eliminar categoria',
-                                              message: 'Se eliminara si no esta en uso.',
+                                              message:
+                                                  'Se eliminara si no esta en uso.',
                                               confirmLabel: 'Eliminar',
                                             );
                                             if (!ok) {
                                               return;
                                             }
                                             try {
-                                              await finance.deleteCategory(cat.id!);
+                                              await finance
+                                                  .deleteCategory(cat.id!);
                                               _show('Categoria eliminada.');
                                             } catch (e) {
                                               _show('$e');

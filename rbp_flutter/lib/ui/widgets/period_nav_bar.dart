@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/constants.dart';
+import '../theme/app_icon_button.dart';
 
 class PeriodNavBar extends StatelessWidget {
   const PeriodNavBar({
@@ -30,8 +31,9 @@ class PeriodNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final actionButtonStyle = OutlinedButton.styleFrom(
       shape: const StadiumBorder(),
-      side: const BorderSide(color: Color(0xFF9E9E9E)),
+      side: BorderSide(color: AppColors.outline),
       foregroundColor: AppColors.primary,
+      overlayColor: AppColors.hoverPrimary,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       minimumSize: const Size(0, 38),
       textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
@@ -49,8 +51,11 @@ class PeriodNavBar extends StatelessWidget {
               if (onCalendar != null)
                 _compactIconButton(
                   onPressed: onCalendar,
-                  icon: const Icon(Icons.calendar_month, color: AppColors.primary),
-                  tooltip: isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
+                  icon: Icons.calendar_month,
+                  color: AppColors.primary,
+                  hoverColor: AppColors.hoverPrimary,
+                  tooltip:
+                      isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
                 ),
               if (onChart != null)
                 OutlinedButton.icon(
@@ -84,8 +89,11 @@ class PeriodNavBar extends StatelessWidget {
             if (onCalendar != null)
               _compactIconButton(
                 onPressed: onCalendar,
-                icon: const Icon(Icons.calendar_month, color: AppColors.primary),
-                tooltip: isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
+                icon: Icons.calendar_month,
+                color: AppColors.primary,
+                hoverColor: AppColors.hoverPrimary,
+                tooltip:
+                    isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
               ),
             if (onChart != null)
               OutlinedButton.icon(
@@ -124,14 +132,12 @@ class PeriodNavBar extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
+        AppIconButton(
           onPressed: onPrev,
-          icon: const Icon(Icons.chevron_left),
+          icon: Icons.chevron_left,
+          color: AppColors.iconNeutral,
+          hoverColor: AppColors.hoverPrimary,
           tooltip: isMonthly ? 'Mes anterior' : 'Quincena anterior',
-          splashRadius: 18,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.all(6),
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -141,20 +147,18 @@ class PeriodNavBar extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w600,
               color: AppColors.primary,
             ),
           ),
         ),
-        IconButton(
+        AppIconButton(
           onPressed: onNext,
-          icon: const Icon(Icons.chevron_right),
+          icon: Icons.chevron_right,
+          color: AppColors.iconNeutral,
+          hoverColor: AppColors.hoverPrimary,
           tooltip: isMonthly ? 'Mes siguiente' : 'Quincena siguiente',
-          splashRadius: 18,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.all(6),
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
         TextButton(onPressed: onToday, child: const Text('Hoy')),
       ],
@@ -163,17 +167,17 @@ class PeriodNavBar extends StatelessWidget {
 
   Widget _compactIconButton({
     required VoidCallback? onPressed,
-    required Widget icon,
+    required IconData icon,
+    required Color color,
+    required Color hoverColor,
     required String tooltip,
   }) {
-    return IconButton(
+    return AppIconButton(
       onPressed: onPressed,
       icon: icon,
+      color: color,
+      hoverColor: hoverColor,
       tooltip: tooltip,
-      splashRadius: 18,
-      visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.all(6),
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
     );
   }
 }

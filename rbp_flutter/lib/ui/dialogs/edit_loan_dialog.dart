@@ -32,24 +32,31 @@ Future<void> showEditLoanDialog(
                   const SizedBox(height: 8),
                   TextField(
                     controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'Monto RD\$'),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: descCtrl,
-                    decoration: const InputDecoration(labelText: 'Motivo (opc.)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Motivo (opc.)'),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: deduction,
                     items: const [
-                      DropdownMenuItem(value: 'ninguno', child: Text('No descontar')),
-                      DropdownMenuItem(value: 'gasto', child: Text('Descontar como gasto')),
-                      DropdownMenuItem(value: 'ahorro', child: Text('Descontar del ahorro')),
+                      DropdownMenuItem(
+                          value: 'ninguno', child: Text('No descontar')),
+                      DropdownMenuItem(
+                          value: 'gasto', child: Text('Descontar como gasto')),
+                      DropdownMenuItem(
+                          value: 'ahorro', child: Text('Descontar del ahorro')),
                     ],
-                    onChanged: (value) => setState(() => deduction = value ?? 'ninguno'),
-                    decoration: const InputDecoration(labelText: 'Descontar de...'),
+                    onChanged: (value) =>
+                        setState(() => deduction = value ?? 'ninguno'),
+                    decoration:
+                        const InputDecoration(labelText: 'Descontar de...'),
                   ),
                 ],
               ),
@@ -62,7 +69,9 @@ Future<void> showEditLoanDialog(
               FilledButton.icon(
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text.trim());
-                  if (amount == null || amount <= 0 || personCtrl.text.trim().isEmpty) {
+                  if (amount == null ||
+                      amount <= 0 ||
+                      personCtrl.text.trim().isEmpty) {
                     return;
                   }
                   await finance.updateLoan(

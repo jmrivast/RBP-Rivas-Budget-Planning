@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
+import '../theme/app_icon_button.dart';
 
 class ExpenseTab extends StatefulWidget {
   const ExpenseTab({super.key});
@@ -32,7 +33,8 @@ class _ExpenseTabState extends State<ExpenseTab> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   DateTime _safeDate(String raw) {
@@ -56,7 +58,11 @@ class _ExpenseTabState extends State<ExpenseTab> {
     final amount = double.tryParse(_amountCtrl.text.trim());
     final desc = _descCtrl.text.trim();
     final date = _dateCtrl.text.trim();
-    if (amount == null || amount <= 0 || desc.isEmpty || _categoryId == null || date.isEmpty) {
+    if (amount == null ||
+        amount <= 0 ||
+        desc.isEmpty ||
+        _categoryId == null ||
+        date.isEmpty) {
       _show('Completa todo.');
       return;
     }
@@ -94,15 +100,17 @@ class _ExpenseTabState extends State<ExpenseTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Registrar gasto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const Text('Registrar gasto',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE0E0E0)),
+                      color: AppColors.cardBg,
+                      border: Border.all(color: AppColors.cardBorder),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,8 +119,10 @@ class _ExpenseTabState extends State<ExpenseTab> {
                           width: 260,
                           child: TextField(
                             controller: _amountCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(labelText: 'Monto RD\$', hintText: '500'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: const InputDecoration(
+                                labelText: 'Monto RD\$', hintText: '500'),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -120,7 +130,9 @@ class _ExpenseTabState extends State<ExpenseTab> {
                           width: 320,
                           child: TextField(
                             controller: _descCtrl,
-                            decoration: const InputDecoration(labelText: 'Descripcion', hintText: 'Supermercado'),
+                            decoration: const InputDecoration(
+                                labelText: 'Descripcion',
+                                hintText: 'Supermercado'),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -131,13 +143,16 @@ class _ExpenseTabState extends State<ExpenseTab> {
                               width: 200,
                               child: TextField(
                                 controller: _dateCtrl,
-                                decoration: const InputDecoration(labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
+                                decoration: const InputDecoration(
+                                    labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
                               ),
                             ),
                             const SizedBox(width: 6),
-                            IconButton(
+                            AppIconButton(
                               onPressed: _pickDate,
-                              icon: const Icon(Icons.calendar_month, color: AppColors.primary),
+                              icon: Icons.calendar_month,
+                              color: AppColors.primary,
+                              hoverColor: AppColors.hoverPrimary,
                               tooltip: 'Elegir fecha',
                             ),
                           ],
@@ -156,8 +171,10 @@ class _ExpenseTabState extends State<ExpenseTab> {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (value) => setState(() => _categoryId = value),
-                            decoration: const InputDecoration(labelText: 'Categoria'),
+                            onChanged: (value) =>
+                                setState(() => _categoryId = value),
+                            decoration:
+                                const InputDecoration(labelText: 'Categoria'),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -166,18 +183,24 @@ class _ExpenseTabState extends State<ExpenseTab> {
                           child: DropdownButtonFormField<String>(
                             initialValue: _source,
                             items: const [
-                              DropdownMenuItem(value: 'sueldo', child: Text('Sueldo del periodo')),
-                              DropdownMenuItem(value: 'ahorro', child: Text('Ahorro total')),
+                              DropdownMenuItem(
+                                  value: 'sueldo',
+                                  child: Text('Sueldo del periodo')),
+                              DropdownMenuItem(
+                                  value: 'ahorro', child: Text('Ahorro total')),
                             ],
-                            onChanged: (value) => setState(() => _source = value ?? 'sueldo'),
-                            decoration: const InputDecoration(labelText: 'Descontar de'),
+                            onChanged: (value) =>
+                                setState(() => _source = value ?? 'sueldo'),
+                            decoration: const InputDecoration(
+                                labelText: 'Descontar de'),
                           ),
                         ),
                         const SizedBox(height: 10),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: FilledButton.icon(
-                            onPressed: finance.isLoading ? null : () => _save(finance),
+                            onPressed:
+                                finance.isLoading ? null : () => _save(finance),
                             icon: const Icon(Icons.save),
                             label: const Text('Guardar gasto'),
                           ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../config/constants.dart';
 import '../../services/license_service.dart';
+import '../theme/app_icon_button.dart';
 
 class ActivationScreen extends StatefulWidget {
   const ActivationScreen({
@@ -113,7 +114,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppColors.pageBackground,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
@@ -129,7 +130,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Activar RBP',
                   style: TextStyle(
                     fontSize: 24,
@@ -138,7 +139,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Ingresa tu clave de licencia para activar la aplicacion.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: AppColors.subtitle),
@@ -150,15 +151,17 @@ class _ActivationScreenState extends State<ActivationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Tu ID de maquina',
-                          style: TextStyle(fontSize: 12, color: AppColors.subtitle),
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.subtitle),
                         ),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
+                            color: AppColors.mutedSurface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.cardBorder),
                           ),
@@ -174,10 +177,13 @@ class _ActivationScreenState extends State<ActivationScreen> {
                                   ),
                                 ),
                               ),
-                              IconButton(
-                                onPressed: _loadingMachine ? null : _copyMachineId,
+                              AppIconButton(
+                                onPressed:
+                                    _loadingMachine ? null : _copyMachineId,
                                 tooltip: 'Copiar',
-                                icon: const Icon(Icons.copy),
+                                icon: Icons.copy,
+                                color: AppColors.primary,
+                                hoverColor: AppColors.hoverPrimary,
                               ),
                             ],
                           ),
@@ -191,7 +197,8 @@ class _ActivationScreenState extends State<ActivationScreen> {
                             if (upper != value) {
                               _keyCtrl.value = _keyCtrl.value.copyWith(
                                 text: upper,
-                                selection: TextSelection.collapsed(offset: upper.length),
+                                selection: TextSelection.collapsed(
+                                    offset: upper.length),
                               );
                             }
                           },
@@ -205,17 +212,22 @@ class _ActivationScreenState extends State<ActivationScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
-                            onPressed: _activating || _loadingMachine ? null : _activate,
+                            onPressed: _activating || _loadingMachine
+                                ? null
+                                : _activate,
                             icon: const Icon(Icons.vpn_key),
-                            label: Text(_activating ? 'Activando...' : 'Activar'),
+                            label:
+                                Text(_activating ? 'Activando...' : 'Activar'),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: _activating ? null : widget.onContinueTrial,
-                            child: const Text('Continuar sin activar (modo de prueba)'),
+                            onPressed:
+                                _activating ? null : widget.onContinueTrial,
+                            child: const Text(
+                                'Continuar sin activar (modo de prueba)'),
                           ),
                         ),
                       ],
@@ -223,7 +235,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Contacta al desarrollador con tu ID de maquina para obtener tu clave.\n'
                   '${AppLicense.developerContact} | ${AppLicense.developerEmail}',
                   textAlign: TextAlign.center,

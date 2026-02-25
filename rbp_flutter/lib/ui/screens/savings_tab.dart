@@ -50,7 +50,7 @@ class _SavingsTabState extends State<SavingsTab> {
 
         return LayoutBuilder(
           builder: (context, viewport) {
-            final goalsHeight = (viewport.maxHeight * 0.28).clamp(180.0, 340.0);
+            final goalsHeight = (viewport.maxHeight * 0.34).clamp(220.0, 360.0);
             return SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
@@ -70,20 +70,21 @@ class _SavingsTabState extends State<SavingsTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Ahorro de este periodo',
+                                const Text('Ahorro de este período',
                                     style:
                                         TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 4),
                                 Text('Actual: ${formatCurrency(periodSavings)}',
                                     style:
-                                        const TextStyle(color: Colors.black54)),
+                                        TextStyle(color: AppColors.subtitle)),
                                 const SizedBox(height: 8),
                                 Wrap(
                                   spacing: 10,
                                   runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     SizedBox(
-                                      width: 260,
+                                      width: 330,
                                       child: TextField(
                                         controller: _depositCtrl,
                                         keyboardType: const TextInputType
@@ -96,6 +97,10 @@ class _SavingsTabState extends State<SavingsTab> {
                                       ),
                                     ),
                                     FilledButton.icon(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.success,
+                                        overlayColor: AppColors.hoverSuccess,
+                                      ),
                                       onPressed: () async {
                                         final amount = double.tryParse(
                                             _depositCtrl.text.trim());
@@ -130,14 +135,13 @@ class _SavingsTabState extends State<SavingsTab> {
                                 Text(
                                     'Disponible: ${formatCurrency(totalSavings)}',
                                     style:
-                                        const TextStyle(color: Colors.black54)),
+                                        TextStyle(color: AppColors.subtitle)),
                                 const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 8,
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     SizedBox(
-                                      width: 260,
+                                      width: 330,
                                       child: TextField(
                                         controller: _withdrawCtrl,
                                         keyboardType: const TextInputType
@@ -149,6 +153,7 @@ class _SavingsTabState extends State<SavingsTab> {
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(width: 10),
                                     FilledButton.icon(
                                       onPressed: () async {
                                         final amount = double.tryParse(
@@ -169,46 +174,30 @@ class _SavingsTabState extends State<SavingsTab> {
                                       icon: const Icon(Icons.remove),
                                       label: const Text('Retirar'),
                                       style: FilledButton.styleFrom(
-                                          backgroundColor: AppColors.warn),
+                                        backgroundColor: AppColors.warn,
+                                        overlayColor: AppColors.hoverWarn,
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        );
-
-                        final extraCard = Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Ahorro extra',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 4),
-                                const Text(
-                                    'Depositos adicionales que aumentan el ahorro del periodo.',
-                                    style: TextStyle(color: Colors.black54)),
                                 const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 8,
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     SizedBox(
-                                      width: 260,
+                                      width: 330,
                                       child: TextField(
                                         controller: _extraCtrl,
                                         keyboardType: const TextInputType
                                             .numberWithOptions(decimal: true),
                                         decoration: const InputDecoration(
                                           labelText:
-                                              'Agregar ahorro extra RD\$',
+                                              'Aporte extra al ahorro total RD\$',
                                           hintText: '1200',
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(width: 10),
                                     FilledButton.icon(
                                       onPressed: () async {
                                         final amount = double.tryParse(
@@ -221,10 +210,18 @@ class _SavingsTabState extends State<SavingsTab> {
                                         _extraCtrl.clear();
                                         _show('Ahorro extra registrado.');
                                       },
-                                      icon: const Icon(Icons.savings_outlined),
-                                      label: const Text('Agregar extra'),
+                                      icon: const Icon(Icons.savings),
+                                      label: const Text('Aportar extra'),
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Este aporte suma al ahorro total y no descuenta del salario del período.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.subtitle,
+                                  ),
                                 ),
                               ],
                             ),
@@ -232,18 +229,12 @@ class _SavingsTabState extends State<SavingsTab> {
                         );
 
                         if (isWide) {
-                          return Column(
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(child: leftCard),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: rightCard),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              extraCard,
+                              Expanded(child: leftCard),
+                              const SizedBox(width: 12),
+                              Expanded(child: rightCard),
                             ],
                           );
                         }
@@ -252,8 +243,6 @@ class _SavingsTabState extends State<SavingsTab> {
                             leftCard,
                             const SizedBox(height: 10),
                             rightCard,
-                            const SizedBox(height: 10),
-                            extraCard,
                           ],
                         );
                       },
@@ -276,12 +265,12 @@ class _SavingsTabState extends State<SavingsTab> {
                           border: Border.all(color: AppColors.cardBorder),
                         ),
                         child: finance.goals.isEmpty
-                            ? const Align(
+                            ? Align(
                                 alignment: Alignment.topLeft,
                                 child: Text('Sin metas de ahorro',
                                     style: TextStyle(
                                         fontStyle: FontStyle.italic,
-                                        color: Colors.black54)),
+                                        color: AppColors.subtitle)),
                               )
                             : ListView.builder(
                                 itemCount: finance.goals.length,

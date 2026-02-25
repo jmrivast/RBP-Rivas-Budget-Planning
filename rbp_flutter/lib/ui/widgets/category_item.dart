@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../config/constants.dart';
 import '../../data/models/category.dart';
+import '../theme/app_icon_button.dart';
 
 class CategoryItem extends StatelessWidget {
   const CategoryItem({
@@ -19,20 +21,24 @@ class CategoryItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: AppColors.mutedSurface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Expanded(child: Text(category.name)),
-          IconButton(
+          AppIconButton(
             onPressed: onRename,
-            icon: const Icon(Icons.edit_outlined),
+            icon: Icons.edit_outlined,
+            color: AppColors.primary,
+            hoverColor: AppColors.hoverPrimary,
             tooltip: 'Renombrar',
           ),
-          IconButton(
+          AppIconButton(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
+            icon: Icons.delete_outline,
+            color: AppColors.error,
+            hoverColor: AppColors.hoverError,
             tooltip: 'Eliminar',
           ),
         ],

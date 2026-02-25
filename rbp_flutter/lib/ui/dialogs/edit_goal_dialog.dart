@@ -28,7 +28,8 @@ Future<void> showEditGoalDialog(
               const SizedBox(height: 8),
               TextField(
                 controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Meta RD\$'),
               ),
             ],
@@ -42,10 +43,13 @@ Future<void> showEditGoalDialog(
           FilledButton.icon(
             onPressed: () async {
               final target = double.tryParse(amountCtrl.text.trim());
-              if (target == null || target <= 0 || nameCtrl.text.trim().isEmpty) {
+              if (target == null ||
+                  target <= 0 ||
+                  nameCtrl.text.trim().isEmpty) {
                 return;
               }
-              await finance.updateSavingsGoal(goal.id!, nameCtrl.text.trim(), target);
+              await finance.updateSavingsGoal(
+                  goal.id!, nameCtrl.text.trim(), target);
               if (context.mounted) {
                 Navigator.of(context).pop();
               }

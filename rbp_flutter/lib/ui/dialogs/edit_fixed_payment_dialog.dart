@@ -54,8 +54,7 @@ Future<void> showEditFixedPaymentDialog(
                         setState(() => noFixedDate = value ?? false),
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                        'Sin fecha fija (marcar pagado manualmente)'),
+                    title: const Text('Sin fecha fija (marcar pagado manualmente)'),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(

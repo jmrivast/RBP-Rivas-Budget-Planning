@@ -360,15 +360,15 @@ class _HomeScreenState extends State<HomeScreen>
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           child: Column(
             children: [
-              const Row(
+              Row(
                 children: [
-                  Image(
+                  const Image(
                     image: AssetImage('assets/Untitled.png'),
                     width: 34,
                     height: 34,
                     fit: BoxFit.contain,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Text(
                     AppStrings.appSubtitle,
                     style: TextStyle(fontSize: 14, color: AppColors.subtitle),
@@ -410,13 +410,13 @@ class _HomeScreenState extends State<HomeScreen>
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 8),
-                  color: const Color(0xFFFFF3CD),
+                  color: AppColors.trialBannerBg,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: const Text(
+                  child: Text(
                     'Version de prueba: activa tu licencia para acceso completo.',
                     style: TextStyle(
-                      color: Color(0xFF8A6D3B),
+                      color: AppColors.trialBannerText,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),

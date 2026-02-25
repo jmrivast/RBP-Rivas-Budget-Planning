@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/platform_config.dart';
 import '../../providers/finance_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../services/license_service.dart';
 import 'activation_screen.dart';
 import 'home_screen.dart';
@@ -30,8 +31,10 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
 
   Future<void> _resolveEntry() async {
     final finance = context.read<FinanceProvider>();
+    final settings = context.read<SettingsProvider>();
     try {
       await finance.init();
+      await settings.loadThemePreset();
       if (!PlatformConfig.supportsLicense) {
         finance.setLicenseState(activated: true, trialMode: false);
         if (!mounted) {

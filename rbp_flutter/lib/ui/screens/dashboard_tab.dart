@@ -29,23 +29,46 @@ class DashboardTab extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Gastos por categoria'),
-          content: SizedBox(
-            width: 820,
-            height: 520,
-            child: PieChartWidget(
-              catTotals: data.catTotals,
-              categoriesById: data.categoriesById,
-              height: 360,
+        return Dialog(
+          backgroundColor: AppColors.pageBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: SizedBox(
+            width: 1080,
+            height: 760,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 22, 28, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Gastos por categoría',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 44,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: PieChartWidget(
+                      catTotals: data.catTotals,
+                      categoriesById: data.categoriesById,
+                      height: 520,
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cerrar'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
         );
       },
     );
@@ -58,7 +81,8 @@ class DashboardTab extends StatelessWidget {
       final message = await _deliverExportedFile(path: path, label: 'PDF');
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Error al generar PDF: $e')));
+      messenger
+          .showSnackBar(SnackBar(content: Text('Error al generar PDF: $e')));
     }
   }
 
@@ -69,7 +93,8 @@ class DashboardTab extends StatelessWidget {
       final message = await _deliverExportedFile(path: path, label: 'CSV');
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Error al exportar CSV: $e')));
+      messenger
+          .showSnackBar(SnackBar(content: Text('Error al exportar CSV: $e')));
     }
   }
 
@@ -97,9 +122,12 @@ class DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final finance = context.read<FinanceProvider>();
-    final data = context.select<FinanceProvider, DashboardData?>((f) => f.dashboard);
-    final periodTitle = context.select<FinanceProvider, String>((f) => f.periodTitle);
-    final isMonthly = context.select<FinanceProvider, bool>((f) => f.periodMode == 'mensual');
+    final data =
+        context.select<FinanceProvider, DashboardData?>((f) => f.dashboard);
+    final periodTitle =
+        context.select<FinanceProvider, String>((f) => f.periodTitle);
+    final isMonthly =
+        context.select<FinanceProvider, bool>((f) => f.periodMode == 'mensual');
 
     if (data == null) {
       return const Center(child: CircularProgressIndicator());
@@ -153,7 +181,9 @@ class DashboardTab extends StatelessWidget {
             onPrev: finance.goToPreviousPeriod,
             onToday: finance.goToCurrentPeriod,
             onNext: finance.goToNextPeriod,
-            onCalendar: !isMonthly ? () => showCustomQuincenaDialog(context, finance: finance) : null,
+            onCalendar: !isMonthly
+                ? () => showCustomQuincenaDialog(context, finance: finance)
+                : null,
             onChart: () => _showChart(context, finance),
             onPdf: () => _exportPdf(context, finance),
             onCsv: () => _exportCsv(context, finance),
@@ -167,7 +197,8 @@ class DashboardTab extends StatelessWidget {
                       ? 2
                       : 1;
               const spacing = 10.0;
-              final itemWidth = (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+              final itemWidth =
+                  (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
               return Wrap(
                 spacing: spacing,
                 runSpacing: spacing,
@@ -201,7 +232,8 @@ class DashboardTab extends StatelessWidget {
                       alignment: Alignment.topLeft,
                       child: Padding(
                         padding: EdgeInsets.all(8),
-                        child: Text('Sin gastos', style: TextStyle(fontStyle: FontStyle.italic)),
+                        child: Text('Sin gastos',
+                            style: TextStyle(fontStyle: FontStyle.italic)),
                       ),
                     )
                   : ListView.builder(
@@ -212,20 +244,22 @@ class DashboardTab extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: ExpenseListItem(
                             item: item,
-                            onEdit: item.type == 'expense' && item.raw is Expense
-                                ? () => showEditExpenseDialog(
-                                      context,
-                                      finance: finance,
-                                      expense: item.raw as Expense,
-                                      categories: finance.categories,
-                                    )
-                                : null,
+                            onEdit:
+                                item.type == 'expense' && item.raw is Expense
+                                    ? () => showEditExpenseDialog(
+                                          context,
+                                          finance: finance,
+                                          expense: item.raw as Expense,
+                                          categories: finance.categories,
+                                        )
+                                    : null,
                             onDelete: item.type == 'expense' && item.id != null
                                 ? () async {
                                     final ok = await showConfirmDialog(
                                       context,
                                       title: 'Eliminar gasto',
-                                      message: 'Esta accion no se puede deshacer.',
+                                      message:
+                                          'Esta accion no se puede deshacer.',
                                       confirmLabel: 'Eliminar',
                                     );
                                     if (!ok) {

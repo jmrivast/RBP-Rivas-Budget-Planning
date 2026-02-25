@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
 
 Future<void> showCustomQuincenaDialog(
@@ -29,19 +30,21 @@ Future<void> showCustomQuincenaDialog(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Ajusta fechas de inicio y fin para la quincena visible.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontSize: 12, color: AppColors.subtitle),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: startCtrl,
-                decoration: const InputDecoration(labelText: 'Inicio (YYYY-MM-DD)'),
+                decoration:
+                    const InputDecoration(labelText: 'Inicio (YYYY-MM-DD)'),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: endCtrl,
-                decoration: const InputDecoration(labelText: 'Fin (YYYY-MM-DD)'),
+                decoration:
+                    const InputDecoration(labelText: 'Fin (YYYY-MM-DD)'),
               ),
             ],
           ),

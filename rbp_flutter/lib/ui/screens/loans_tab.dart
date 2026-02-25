@@ -4,8 +4,8 @@ import 'package:rbp_flutter/config/constants.dart';
 import 'package:rbp_flutter/providers/finance_provider.dart';
 import 'package:rbp_flutter/ui/dialogs/confirm_dialog.dart';
 import 'package:rbp_flutter/ui/dialogs/edit_loan_dialog.dart';
+import 'package:rbp_flutter/ui/theme/app_icon_button.dart';
 import 'package:rbp_flutter/ui/widgets/loan_item.dart';
-
 
 class LoansTab extends StatefulWidget {
   const LoansTab({super.key});
@@ -36,7 +36,8 @@ class _LoansTabState extends State<LoansTab> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   DateTime _safeDate(String raw) {
@@ -92,21 +93,25 @@ class _LoansTabState extends State<LoansTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Dinero prestado', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const Text('Dinero prestado',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Expanded(
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.cardBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
+                    border: Border.all(color: AppColors.cardBorder),
                   ),
                   child: finance.loans.isEmpty
-                      ? const Align(
+                      ? Align(
                           alignment: Alignment.topLeft,
-                          child: Text('Sin prestamos', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.black54)),
+                          child: Text('Sin prestamos',
+                              style: TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.subtitle)),
                         )
                       : ListView.builder(
                           itemCount: finance.loans.length,
@@ -116,13 +121,16 @@ class _LoansTabState extends State<LoansTab> {
                               padding: const EdgeInsets.only(bottom: 6),
                               child: LoanItem(
                                 loan: loan,
-                                onMarkPaid: () => finance.markLoanPaid(loan.id!),
-                                onEdit: () => showEditLoanDialog(context, finance: finance, loan: loan),
+                                onMarkPaid: () =>
+                                    finance.markLoanPaid(loan.id!),
+                                onEdit: () => showEditLoanDialog(context,
+                                    finance: finance, loan: loan),
                                 onDelete: () async {
                                   final ok = await showConfirmDialog(
                                     context,
                                     title: 'Eliminar prestamo',
-                                    message: 'Esta accion no se puede deshacer.',
+                                    message:
+                                        'Esta accion no se puede deshacer.',
                                     confirmLabel: 'Eliminar',
                                   );
                                   if (!ok) {
@@ -139,13 +147,15 @@ class _LoansTabState extends State<LoansTab> {
               const SizedBox(height: 12),
               const Divider(height: 1),
               const SizedBox(height: 10),
-              const Text('Nuevo prestamo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text('Nuevo prestamo',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               SizedBox(
                 width: 260,
                 child: TextField(
                   controller: _personCtrl,
-                  decoration: const InputDecoration(labelText: 'Persona', hintText: 'Nombre'),
+                  decoration: const InputDecoration(
+                      labelText: 'Persona', hintText: 'Nombre'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -153,8 +163,10 @@ class _LoansTabState extends State<LoansTab> {
                 width: 200,
                 child: TextField(
                   controller: _amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Monto RD\$', hintText: '500'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Monto RD\$', hintText: '500'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -162,7 +174,8 @@ class _LoansTabState extends State<LoansTab> {
                 width: 320,
                 child: TextField(
                   controller: _descCtrl,
-                  decoration: const InputDecoration(labelText: 'Motivo (opc.)', hintText: 'gasolina'),
+                  decoration: const InputDecoration(
+                      labelText: 'Motivo (opc.)', hintText: 'gasolina'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -173,13 +186,16 @@ class _LoansTabState extends State<LoansTab> {
                     width: 200,
                     child: TextField(
                       controller: _dateCtrl,
-                      decoration: const InputDecoration(labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
+                      decoration: const InputDecoration(
+                          labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
                     ),
                   ),
                   const SizedBox(width: 6),
-                  IconButton(
+                  AppIconButton(
                     onPressed: _pickDate,
-                    icon: const Icon(Icons.calendar_month, color: AppColors.primary),
+                    icon: Icons.calendar_month,
+                    color: AppColors.primary,
+                    hoverColor: AppColors.hoverPrimary,
                     tooltip: 'Elegir fecha',
                   ),
                 ],
@@ -190,12 +206,17 @@ class _LoansTabState extends State<LoansTab> {
                 child: DropdownButtonFormField<String>(
                   initialValue: _deduction,
                   items: const [
-                    DropdownMenuItem(value: 'ninguno', child: Text('No descontar')),
-                    DropdownMenuItem(value: 'gasto', child: Text('Descontar como gasto')),
-                    DropdownMenuItem(value: 'ahorro', child: Text('Descontar del ahorro')),
+                    DropdownMenuItem(
+                        value: 'ninguno', child: Text('No descontar')),
+                    DropdownMenuItem(
+                        value: 'gasto', child: Text('Descontar como gasto')),
+                    DropdownMenuItem(
+                        value: 'ahorro', child: Text('Descontar del ahorro')),
                   ],
-                  onChanged: (value) => setState(() => _deduction = value ?? 'ninguno'),
-                  decoration: const InputDecoration(labelText: 'Descontar de...'),
+                  onChanged: (value) =>
+                      setState(() => _deduction = value ?? 'ninguno'),
+                  decoration:
+                      const InputDecoration(labelText: 'Descontar de...'),
                 ),
               ),
               const SizedBox(height: 10),

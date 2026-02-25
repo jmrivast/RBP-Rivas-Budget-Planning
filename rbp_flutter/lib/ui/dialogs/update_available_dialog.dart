@@ -25,7 +25,8 @@ Future<void> showUpdateAvailableDialog(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Version actual: v$currentVersion'),
-              Text('Nueva version: ${latest.tag}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text('Nueva version: ${latest.tag}',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               const Text('Novedades:'),
               const SizedBox(height: 4),

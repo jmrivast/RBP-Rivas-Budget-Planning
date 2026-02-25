@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/dashboard_data.dart';
 import '../../utils/currency_formatter.dart';
+import '../theme/app_icon_button.dart';
 
 class ExpenseListItem extends StatelessWidget {
   const ExpenseListItem({
@@ -22,7 +23,7 @@ class ExpenseListItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isFixedDue ? const Color(0xFFFFF8E1) : AppColors.mutedSurface,
+        color: isFixedDue ? AppColors.fixedDueSurface : AppColors.mutedSurface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -37,7 +38,7 @@ class ExpenseListItem extends StatelessWidget {
                 ),
                 Text(
                   '${item.date}  ·  ${item.categories}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(fontSize: 12, color: AppColors.subtitle),
                 ),
               ],
             ),
@@ -50,20 +51,24 @@ class ExpenseListItem extends StatelessWidget {
             ),
           ),
           if (!isFixedDue && onEdit != null)
-            IconButton(
+            AppIconButton(
               onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 18),
+              icon: Icons.edit_outlined,
+              color: AppColors.primary,
+              hoverColor: AppColors.hoverPrimary,
               tooltip: 'Editar',
             ),
           if (!isFixedDue && onDelete != null)
-            IconButton(
+            AppIconButton(
               onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+              icon: Icons.delete_outline,
+              color: AppColors.error,
+              hoverColor: AppColors.hoverError,
               tooltip: 'Eliminar',
             ),
           if (isFixedDue)
-            const Padding(
-              padding: EdgeInsets.only(left: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
               child: Icon(Icons.event, color: AppColors.warn, size: 18),
             ),
         ],

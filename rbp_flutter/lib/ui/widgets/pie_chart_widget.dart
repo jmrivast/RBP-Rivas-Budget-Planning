@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../config/constants.dart';
+import '../../utils/currency_formatter.dart';
 
 class PieChartWidget extends StatelessWidget {
   const PieChartWidget({
@@ -31,11 +32,14 @@ class PieChartWidget extends StatelessWidget {
     final colors = <Color>[
       AppColors.primary,
       AppColors.success,
-      AppColors.warn,
-      const Color(0xFFB10DC9),
       AppColors.error,
-      const Color(0xFF39CCCC),
-      const Color(0xFFAAAAAA),
+      AppColors.warn,
+      const Color(0xFF8E24AA),
+      const Color(0xFF00897B),
+      const Color(0xFFF4511E),
+      const Color(0xFF3949AB),
+      const Color(0xFFC0CA33),
+      const Color(0xFF6D4C41),
     ];
 
     final total = entries.fold<double>(0, (sum, e) => sum + e.value);
@@ -43,56 +47,67 @@ class PieChartWidget extends StatelessWidget {
     final sections = <PieChartSectionData>[];
     for (var i = 0; i < entries.length; i++) {
       final e = entries[i];
-      final name = categoriesById[e.key] ?? 'Cat ${e.key}';
-      final pct = total <= 0 ? 0 : (e.value / total) * 100;
       sections.add(
         PieChartSectionData(
-          value: max(e.value, 0),
+          value: max(e.value, 0.000001),
           color: colors[i % colors.length],
-          radius: 68,
-          title: pct >= 7 ? '${pct.toStringAsFixed(0)}%' : '',
-          titleStyle: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-          badgeWidget: pct >= 12
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    name,
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                )
-              : null,
+          radius: 150,
+          title: '',
+          borderSide: const BorderSide(color: Colors.white, width: 3),
         ),
       );
     }
 
-    return Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: height,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 36,
-              sections: sections,
+        Expanded(
+          flex: 6,
+          child: Center(
+            child: SizedBox(
+              height: height,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 0,
+                  centerSpaceRadius: 55,
+                  sections: sections,
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 6,
-          children: [
-            for (var i = 0; i < entries.length; i++)
-              _LegendItem(
-                color: colors[i % colors.length],
-                label: categoriesById[entries[i].key] ?? 'Cat ${entries[i].key}',
-                value: entries[i].value,
-              ),
-          ],
+        const SizedBox(width: 16),
+        Expanded(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Leyenda',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (var i = 0; i < entries.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _LegendItem(
+                      color: colors[i % colors.length],
+                      label: categoriesById[entries[i].key] ??
+                          'Cat ${entries[i].key}',
+                      value: entries[i].value,
+                      percent:
+                          total <= 0 ? 0 : (entries[i].value / total) * 100,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -104,11 +119,13 @@ class _LegendItem extends StatelessWidget {
     required this.color,
     required this.label,
     required this.value,
+    required this.percent,
   });
 
   final Color color;
   final String label;
   final double value;
+  final double percent;
 
   @override
   Widget build(BuildContext context) {
@@ -116,12 +133,20 @@ class _LegendItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
         ),
         const SizedBox(width: 6),
-        Text('$label (${value.toStringAsFixed(0)})'),
+        Expanded(
+          child: Text(
+            '$label: ${percent.toStringAsFixed(1)}% (${formatCurrency(value)})',
+            style: const TextStyle(fontSize: 13),
+          ),
+        ),
       ],
     );
   }

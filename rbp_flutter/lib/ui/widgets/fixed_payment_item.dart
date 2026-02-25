@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../config/constants.dart';
 import '../../data/models/dashboard_data.dart';
+import '../theme/app_icon_button.dart';
 import '../../utils/currency_formatter.dart';
 
 class FixedPaymentItem extends StatelessWidget {
@@ -22,7 +24,7 @@ class FixedPaymentItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: AppColors.mutedSurface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -46,7 +48,7 @@ class FixedPaymentItem extends StatelessWidget {
                       : (payment.dueDate.isEmpty
                           ? 'Fecha ${payment.dueDay}'
                           : 'Fecha ${payment.dueDate}'),
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(fontSize: 12, color: AppColors.subtitle),
                 ),
               ],
             ),
@@ -55,14 +57,18 @@ class FixedPaymentItem extends StatelessWidget {
             formatCurrency(payment.amount),
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-          IconButton(
+          AppIconButton(
             onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
+            icon: Icons.edit_outlined,
+            color: AppColors.primary,
+            hoverColor: AppColors.hoverPrimary,
             tooltip: 'Editar',
           ),
-          IconButton(
+          AppIconButton(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
+            icon: Icons.delete_outline,
+            color: AppColors.error,
+            hoverColor: AppColors.hoverError,
             tooltip: 'Eliminar',
           ),
         ],

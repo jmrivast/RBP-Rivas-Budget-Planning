@@ -5,6 +5,7 @@ import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/edit_income_dialog.dart';
+import '../theme/app_icon_button.dart';
 import '../widgets/income_item.dart';
 
 class IncomeTab extends StatefulWidget {
@@ -36,13 +37,15 @@ class _IncomeTabState extends State<IncomeTab> {
   }
 
   Future<void> _loadPeriodData(FinanceProvider finance) async {
-    final key = '${finance.year}-${finance.month}-${finance.cycle}-${finance.periodMode}';
+    final key =
+        '${finance.year}-${finance.month}-${finance.cycle}-${finance.periodMode}';
     if (_periodKey == key) {
       return;
     }
     _periodKey = key;
     final salary = await finance.getSalary();
-    final override = await finance.getSalaryOverride(finance.year, finance.month, finance.cycle);
+    final override = await finance.getSalaryOverride(
+        finance.year, finance.month, finance.cycle);
     if (!mounted) {
       return;
     }
@@ -54,7 +57,8 @@ class _IncomeTabState extends State<IncomeTab> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   DateTime _safeDate(String raw) {
@@ -92,7 +96,9 @@ class _IncomeTabState extends State<IncomeTab> {
                 final salaryPanel = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Salario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                    const Text('Salario',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 10,
@@ -103,16 +109,19 @@ class _IncomeTabState extends State<IncomeTab> {
                           width: 260,
                           child: TextField(
                             controller: _salaryCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             decoration: InputDecoration(
-                              labelText: 'Salario base ${finance.periodMode} RD\$',
+                              labelText:
+                                  'Salario base ${finance.periodMode} RD\$',
                               hintText: '25000',
                             ),
                           ),
                         ),
                         FilledButton.icon(
                           onPressed: () async {
-                            final value = double.tryParse(_salaryCtrl.text.trim());
+                            final value =
+                                double.tryParse(_salaryCtrl.text.trim());
                             if (value == null || value < 0) {
                               _show('Salario invalido.');
                               return;
@@ -126,7 +135,7 @@ class _IncomeTabState extends State<IncomeTab> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Salario variable por quincena',
                       style: TextStyle(fontSize: 14, color: AppColors.subtitle),
                     ),
@@ -140,9 +149,11 @@ class _IncomeTabState extends State<IncomeTab> {
                           width: 330,
                           child: TextField(
                             controller: _overrideCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             decoration: InputDecoration(
-                              labelText: 'Salario esta quincena (Q${finance.cycle} ${finance.month.toString().padLeft(2, '0')}/${finance.year}) RD\$',
+                              labelText:
+                                  'Salario esta quincena (Q${finance.cycle} ${finance.month.toString().padLeft(2, '0')}/${finance.year}) RD\$',
                             ),
                             enabled: finance.periodMode != 'mensual',
                           ),
@@ -151,7 +162,8 @@ class _IncomeTabState extends State<IncomeTab> {
                           onPressed: finance.periodMode == 'mensual'
                               ? null
                               : () async {
-                                  final value = double.tryParse(_overrideCtrl.text.trim());
+                                  final value = double.tryParse(
+                                      _overrideCtrl.text.trim());
                                   if (value == null || value < 0) {
                                     _show('Monto invalido.');
                                     return;
@@ -177,7 +189,8 @@ class _IncomeTabState extends State<IncomeTab> {
                                     finance.cycle,
                                   );
                                   _overrideCtrl.clear();
-                                  _show('Salario de quincena restablecido al salario base.');
+                                  _show(
+                                      'Salario de quincena restablecido al salario base.');
                                 },
                           icon: const Icon(Icons.restart_alt),
                           label: const Text('Usar base'),
@@ -189,7 +202,7 @@ class _IncomeTabState extends State<IncomeTab> {
                       finance.periodMode == 'mensual'
                           ? 'En modo mensual se usa solo el salario base del mes.'
                           : 'En modo quincenal puedes ajustar montos por quincena.',
-                      style: const TextStyle(fontSize: 12, color: AppColors.subtitle),
+                      style: TextStyle(fontSize: 12, color: AppColors.subtitle),
                     ),
                   ],
                 );
@@ -197,14 +210,18 @@ class _IncomeTabState extends State<IncomeTab> {
                 final addIncomePanel = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Agregar ingreso', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text('Agregar ingreso',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     SizedBox(
                       width: 320,
                       child: TextField(
                         controller: _amountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Monto RD\$'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration:
+                            const InputDecoration(labelText: 'Monto RD\$'),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -212,7 +229,8 @@ class _IncomeTabState extends State<IncomeTab> {
                       width: 440,
                       child: TextField(
                         controller: _descCtrl,
-                        decoration: const InputDecoration(labelText: 'Descripcion'),
+                        decoration:
+                            const InputDecoration(labelText: 'Descripcion'),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -223,20 +241,26 @@ class _IncomeTabState extends State<IncomeTab> {
                           width: 280,
                           child: TextField(
                             controller: _dateCtrl,
-                            decoration: const InputDecoration(labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
+                            decoration: const InputDecoration(
+                                labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
                           ),
                         ),
                         const SizedBox(width: 6),
-                        IconButton(
+                        AppIconButton(
                           onPressed: _pickDate,
-                          icon: const Icon(Icons.calendar_month, color: AppColors.primary),
+                          icon: Icons.calendar_month,
+                          color: AppColors.primary,
+                          hoverColor: AppColors.hoverPrimary,
                           tooltip: 'Elegir fecha',
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        overlayColor: AppColors.hoverSuccess,
+                      ),
                       onPressed: () async {
                         final amount = double.tryParse(_amountCtrl.text.trim());
                         final desc = _descCtrl.text.trim();
@@ -244,10 +268,12 @@ class _IncomeTabState extends State<IncomeTab> {
                           _show('Completa campos.');
                           return;
                         }
-                        await finance.addIncome(amount, desc, _dateCtrl.text.trim());
+                        await finance.addIncome(
+                            amount, desc, _dateCtrl.text.trim());
                         _amountCtrl.clear();
                         _descCtrl.clear();
-                        _dateCtrl.text = DateTime.now().toIso8601String().split('T').first;
+                        _dateCtrl.text =
+                            DateTime.now().toIso8601String().split('T').first;
                         _show('Ingreso registrado.');
                       },
                       icon: const Icon(Icons.add),
@@ -282,7 +308,9 @@ class _IncomeTabState extends State<IncomeTab> {
                       const SizedBox(height: 14),
                       const Divider(height: 1),
                       const SizedBox(height: 12),
-                      const Text('Ingresos extras', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      const Text('Ingresos extras',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       Expanded(
                         child: Container(
@@ -294,11 +322,13 @@ class _IncomeTabState extends State<IncomeTab> {
                             border: Border.all(color: AppColors.cardBorder),
                           ),
                           child: finance.incomes.isEmpty
-                              ? const Align(
+                              ? Align(
                                   alignment: Alignment.topLeft,
                                   child: Text(
                                     'Sin ingresos extras',
-                                    style: TextStyle(fontStyle: FontStyle.italic, color: AppColors.subtitle),
+                                    style: TextStyle(
+                                        fontStyle: FontStyle.italic,
+                                        color: AppColors.subtitle),
                                   ),
                                 )
                               : ListView.builder(
@@ -309,18 +339,23 @@ class _IncomeTabState extends State<IncomeTab> {
                                       padding: const EdgeInsets.only(bottom: 6),
                                       child: IncomeItem(
                                         income: income,
-                                        onEdit: () => showEditIncomeDialog(context, finance: finance, income: income),
+                                        onEdit: () => showEditIncomeDialog(
+                                            context,
+                                            finance: finance,
+                                            income: income),
                                         onDelete: () async {
                                           final ok = await showConfirmDialog(
                                             context,
                                             title: 'Eliminar ingreso',
-                                            message: 'Esta accion no se puede deshacer.',
+                                            message:
+                                                'Esta accion no se puede deshacer.',
                                             confirmLabel: 'Eliminar',
                                           );
                                           if (!ok) {
                                             return;
                                           }
-                                          await finance.deleteIncome(income.id!);
+                                          await finance
+                                              .deleteIncome(income.id!);
                                         },
                                       ),
                                     );

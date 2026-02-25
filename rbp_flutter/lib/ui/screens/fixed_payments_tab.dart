@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/edit_fixed_payment_dialog.dart';
@@ -32,7 +33,8 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _save(FinanceProvider finance) async {
@@ -79,21 +81,25 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Pagos fijos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const Text('Pagos fijos',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Expanded(
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.cardBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
+                    border: Border.all(color: AppColors.cardBorder),
                   ),
                   child: fixed.isEmpty
-                      ? const Align(
+                      ? Align(
                           alignment: Alignment.topLeft,
-                          child: Text('Sin pagos fijos', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.black54)),
+                          child: Text('Sin pagos fijos',
+                              style: TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.subtitle)),
                         )
                       : ListView.builder(
                           itemCount: fixed.length,
@@ -103,7 +109,8 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                               padding: const EdgeInsets.only(bottom: 6),
                               child: FixedPaymentItem(
                                 payment: payment,
-                                onTogglePaid: (paid) => finance.toggleFixedPaymentPaid(payment.id, paid),
+                                onTogglePaid: (paid) => finance
+                                    .toggleFixedPaymentPaid(payment.id, paid),
                                 onEdit: () => showEditFixedPaymentDialog(
                                   context,
                                   finance: finance,
@@ -131,13 +138,15 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
               const SizedBox(height: 12),
               const Divider(height: 1),
               const SizedBox(height: 10),
-              const Text('Agregar pago fijo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text('Agregar pago fijo',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               SizedBox(
                 width: 260,
                 child: TextField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Nombre', hintText: 'Netflix'),
+                  decoration: const InputDecoration(
+                      labelText: 'Nombre', hintText: 'Netflix'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -145,8 +154,10 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                 width: 200,
                 child: TextField(
                   controller: _amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Monto RD\$', hintText: '270'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Monto RD\$', hintText: '270'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -156,7 +167,8 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                   controller: _dayCtrl,
                   keyboardType: TextInputType.number,
                   enabled: !_noFixedDate,
-                  decoration: const InputDecoration(labelText: 'Fecha (dia del mes)', hintText: '1-31'),
+                  decoration: const InputDecoration(
+                      labelText: 'Fecha (dia del mes)', hintText: '1-31'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -164,7 +176,8 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                 width: 320,
                 child: CheckboxListTile(
                   value: _noFixedDate,
-                  onChanged: (value) => setState(() => _noFixedDate = value ?? false),
+                  onChanged: (value) =>
+                      setState(() => _noFixedDate = value ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Sin fecha fija (marcar pagado manualmente)'),
@@ -180,9 +193,7 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                       value: null,
                       child: Text('Sin categoria'),
                     ),
-                    ...finance.categories
-                        .where((c) => c.id != null)
-                        .map(
+                    ...finance.categories.where((c) => c.id != null).map(
                           (cat) => DropdownMenuItem<int?>(
                             value: cat.id,
                             child: Text(cat.name),
@@ -190,7 +201,8 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                         ),
                   ],
                   onChanged: (value) => setState(() => _categoryId = value),
-                  decoration: const InputDecoration(labelText: 'Categoria (opc.)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Categoria (opc.)'),
                 ),
               ),
               const SizedBox(height: 10),

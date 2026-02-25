@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/constants.dart';
 import '../../data/models/extra_income.dart';
 import '../../utils/currency_formatter.dart';
+import '../theme/app_icon_button.dart';
 
 class IncomeItem extends StatelessWidget {
   const IncomeItem({
@@ -30,26 +31,32 @@ class IncomeItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(income.description, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(income.date, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(income.description,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(income.date,
+                    style: TextStyle(fontSize: 12, color: AppColors.subtitle)),
               ],
             ),
           ),
           Text(
             formatCurrency(income.amount),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               color: AppColors.success,
             ),
           ),
-          IconButton(
+          AppIconButton(
             onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 18),
+            icon: Icons.edit_outlined,
+            color: AppColors.primary,
+            hoverColor: AppColors.hoverPrimary,
             tooltip: 'Editar',
           ),
-          IconButton(
+          AppIconButton(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+            icon: Icons.delete_outline,
+            color: AppColors.error,
+            hoverColor: AppColors.hoverError,
             tooltip: 'Eliminar',
           ),
         ],

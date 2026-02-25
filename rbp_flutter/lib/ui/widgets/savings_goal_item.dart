@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/constants.dart';
 import '../../data/models/savings_goal.dart';
 import '../../utils/currency_formatter.dart';
+import '../theme/app_icon_button.dart';
 
 class SavingsGoalItem extends StatelessWidget {
   const SavingsGoalItem({
@@ -21,7 +22,8 @@ class SavingsGoalItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final target = goal.targetAmount;
-    final pct = target <= 0 ? 0.0 : (totalSavings / target).clamp(0, 1).toDouble();
+    final pct =
+        target <= 0 ? 0.0 : (totalSavings / target).clamp(0, 1).toDouble();
     final done = pct >= 1;
 
     return Container(
@@ -43,16 +45,20 @@ class SavingsGoalItem extends StatelessWidget {
               ),
               Text(
                 '${formatCurrency(totalSavings)} / ${formatCurrency(target)}',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontSize: 12, color: AppColors.subtitle),
               ),
-              IconButton(
+              AppIconButton(
                 onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined),
+                icon: Icons.edit_outlined,
+                color: AppColors.primary,
+                hoverColor: AppColors.hoverPrimary,
                 tooltip: 'Editar',
               ),
-              IconButton(
+              AppIconButton(
                 onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
+                icon: Icons.delete_outline,
+                color: AppColors.error,
+                hoverColor: AppColors.hoverError,
                 tooltip: 'Eliminar',
               ),
             ],
@@ -70,7 +76,7 @@ class SavingsGoalItem extends StatelessWidget {
             '${(pct * 100).round()}% completado',
             style: TextStyle(
               fontSize: 11,
-              color: done ? AppColors.success : Colors.black54,
+              color: done ? AppColors.success : AppColors.subtitle,
             ),
           ),
         ],
