@@ -1,12 +1,15 @@
-﻿# RBP - Rivas Budget Planning
+# RBP - Rivas Budget Planning
 
 Aplicacion oficial para usuarios finales en Windows.
 
 ## Descargar
 
 1. Ve a **Releases** en este repositorio.
-2. Descarga el instalador `.exe` mas reciente.
+2. Descarga el instalador `.exe` mas reciente (`RBP_Setup_2.0.0.exe`).
 3. Ejecuta el asistente de instalacion.
+
+Enlace directo de referencia:
+- `https://github.com/jmrivast/RBP-Rivas-Budget-Planning/releases/latest`
 
 ## Requisitos
 
