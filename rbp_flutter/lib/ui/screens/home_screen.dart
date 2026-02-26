@@ -18,7 +18,12 @@ import 'savings_tab.dart';
 import 'settings_tab.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    required this.onOpenActivation,
+  });
+
+  final VoidCallback onOpenActivation;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -133,6 +138,14 @@ class _HomeScreenState extends State<HomeScreen>
             'Activa tu licencia para desbloquear exportes PDF/CSV y quitar el limite de gastos por periodo.',
           ),
           actions: [
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onOpenActivation();
+              },
+              icon: const Icon(Icons.vpn_key),
+              label: const Text('Activar ahora'),
+            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cerrar'),
@@ -411,15 +424,26 @@ class _HomeScreenState extends State<HomeScreen>
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 8),
                   color: AppColors.trialBannerBg,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Text(
-                    'Version de prueba: activa tu licencia para acceso completo.',
-                    style: TextStyle(
-                      color: AppColors.trialBannerText,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Version de prueba: activa tu licencia para acceso completo.',
+                          style: TextStyle(
+                            color: AppColors.trialBannerText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      TextButton.icon(
+                        onPressed: widget.onOpenActivation,
+                        icon: const Icon(Icons.vpn_key, size: 16),
+                        label: const Text('Activar'),
+                      ),
+                    ],
                   ),
                 ),
               const SizedBox(height: 4),

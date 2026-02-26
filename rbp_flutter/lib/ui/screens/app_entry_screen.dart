@@ -137,6 +137,12 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
       );
     }
 
-    return const HomeScreen();
+    return HomeScreen(
+      onOpenActivation: () {
+        setState(() {
+          _needsActivation = true;
+        });
+      },
+    );
   }
 }

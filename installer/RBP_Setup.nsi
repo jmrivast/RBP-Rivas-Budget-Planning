@@ -13,7 +13,8 @@ Unicode true
 !include "x64.nsh"
 
 !ifndef APP_NAME
-  !define APP_NAME "RBP - Rivas Budget Planning"
+!define APP_NAME "RBP"
+!define APP_FULL_NAME "RBP - Rivas Budget Planning"
 !endif
 !ifndef APP_PUBLISHER
   !define APP_PUBLISHER "Rivas Budget Planning"
@@ -47,7 +48,7 @@ SetCompressorDictSize 32
 !define MUI_FINISHPAGE_RUN_TEXT "Abrir RBP ahora"
 
 VIProductVersion "2.0.0.0"
-VIAddVersionKey "ProductName" "${APP_NAME}"
+VIAddVersionKey "ProductName" "${APP_FULL_NAME}"
 VIAddVersionKey "CompanyName" "${APP_PUBLISHER}"
 VIAddVersionKey "FileDescription" "${APP_NAME} Setup"
 VIAddVersionKey "FileVersion" "${APP_VERSION}"
@@ -81,11 +82,11 @@ Section "RBP Core" SecCore
   WriteRegStr HKCU "Software\RivasBudgetPlanning\RBP" "InstallDir" "$INSTDIR"
 
   CreateDirectory "$SMPROGRAMS\RBP"
-  CreateShortcut "$SMPROGRAMS\RBP\RBP - Rivas Budget Planning.lnk" "$INSTDIR\${APP_EXE_NAME}" "" "$INSTDIR\${APP_EXE_NAME}" 0
+  CreateShortcut "$SMPROGRAMS\RBP\${APP_FULL_NAME}.lnk" "$INSTDIR\${APP_EXE_NAME}" "" "$INSTDIR\${APP_EXE_NAME}" 0
   CreateShortcut "$SMPROGRAMS\RBP\Desinstalar RBP.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortcut "$DESKTOP\RBP - Rivas Budget Planning.lnk" "$INSTDIR\${APP_EXE_NAME}" "" "$INSTDIR\${APP_EXE_NAME}" 0
+  CreateShortcut "$DESKTOP\${APP_FULL_NAME}.lnk" "$INSTDIR\${APP_EXE_NAME}" "" "$INSTDIR\${APP_EXE_NAME}" 0
 
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\RBP" "DisplayName" "${APP_NAME}"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\RBP" "DisplayName" "${APP_FULL_NAME}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\RBP" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\RBP" "Publisher" "${APP_PUBLISHER}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\RBP" "InstallLocation" "$INSTDIR"
@@ -96,8 +97,8 @@ Section "RBP Core" SecCore
 SectionEnd
 
 Section "Uninstall"
-  Delete "$DESKTOP\RBP - Rivas Budget Planning.lnk"
-  Delete "$SMPROGRAMS\RBP\RBP - Rivas Budget Planning.lnk"
+  Delete "$DESKTOP\${APP_FULL_NAME}.lnk"
+  Delete "$SMPROGRAMS\RBP\${APP_FULL_NAME}.lnk"
   Delete "$SMPROGRAMS\RBP\Desinstalar RBP.lnk"
   RMDir "$SMPROGRAMS\RBP"
 

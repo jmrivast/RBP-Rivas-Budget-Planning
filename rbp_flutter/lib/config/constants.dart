@@ -181,8 +181,8 @@ class LicenseConfig {
 }
 
 class AppLicense {
-  static const developerContact = 'WhatsApp: +1-809-000-0000';
-  static const developerEmail = 'soporte@rivasbudget.com';
+  static const developerContact = 'WhatsApp: +1 829 222 2172';
+  static const developerEmail = 'jmrivast0110@gmail.com';
   static const trialExpenseLimit = 15;
   static const trialReminderInterval = 3;
 }
