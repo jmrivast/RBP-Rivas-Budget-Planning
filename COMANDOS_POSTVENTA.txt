@@ -1,0 +1,84 @@
+RBP v2.0.0 - Comandos post-venta (Windows)
+==========================================
+
+1) Generar clave de licencia con Machine ID del cliente
+-------------------------------------------------------
+
+Desde la raiz del proyecto:
+
+  dart run rbp_flutter/tools/generate_key.dart <MACHINE_ID>
+
+Ejemplo:
+
+  dart run rbp_flutter/tools/generate_key.dart AB12CD34EF56
+
+Si "dart" no esta en PATH:
+
+  C:\Users\Jose\flutter\bin\dart.bat run rbp_flutter/tools/generate_key.dart <MACHINE_ID>
+
+Opcional (UI grafica para soporte):
+
+  .\dist\RBP_Keygen_Tool_2.0.0\RBP_Keygen_Tool_2.0.0.exe
+
+Build de esa herramienta:
+
+  powershell -ExecutionPolicy Bypass -File .\tools\build_keygen_tool.ps1 -Version 2.0.0
+
+Salida del build:
+
+  .\dist\RBP_Keygen_Tool_2.0.0\   (carpeta completa con DLLs)
+  .\dist\RBP_Keygen_Tool_2.0.0.zip
+
+
+2) Flujo operativo rapido de activacion
+---------------------------------------
+
+- El cliente abre la app.
+- Va a pantalla de activacion.
+- Copia el "Machine ID".
+- Tu generas la clave con el comando anterior.
+- Le envias la clave y el cliente la pega en la app.
+
+
+3) Ver licencia guardada localmente (soporte tecnico)
+------------------------------------------------------
+
+PowerShell:
+
+  $docs = [Environment]::GetFolderPath('MyDocuments')
+  Get-Content (Join-Path $docs 'rbp\license_info.json')
+
+
+4) Resetear activacion local (soporte/reinstalacion de pruebas)
+----------------------------------------------------------------
+
+PowerShell:
+
+  $docs = [Environment]::GetFolderPath('MyDocuments')
+  Remove-Item (Join-Path $docs 'rbp\license_info.json') -Force -ErrorAction SilentlyContinue
+
+
+5) Instalar/desinstalar en modo silencioso (pruebas)
+-----------------------------------------------------
+
+Instalar:
+
+  Start-Process -FilePath .\dist\RBP_Setup_2.0.0.exe -ArgumentList '/S' -Wait
+
+Desinstalar:
+
+  Start-Process -FilePath "$env:LOCALAPPDATA\Programs\RBP\Uninstall.exe" -ArgumentList '/S' -Wait
+
+
+6) Verificar hash SHA256 del instalador antes de entregar
+----------------------------------------------------------
+
+  Get-FileHash .\dist\RBP_Setup_2.0.0.exe -Algorithm SHA256
+
+
+7) Notas comerciales practicas
+------------------------------
+
+- Misma PC + reinstalacion: normalmente misma licencia (si no cambia Machine ID).
+- Cambio de PC: pedir nuevo Machine ID y generar nueva clave.
+- Guarda en tu registro: fecha, cliente, Machine ID, clave emitida, version.
