@@ -6,12 +6,17 @@ class ReleaseInfo {
   const ReleaseInfo({
     required this.tag,
     required this.url,
+    required this.releasePageUrl,
+    required this.downloadUrl,
     required this.notes,
     required this.isPrerelease,
   });
 
   final String tag;
+  // Backward-compat alias: points to release page URL.
   final String url;
+  final String releasePageUrl;
+  final String downloadUrl;
   final String notes;
   final bool isPrerelease;
 }
@@ -124,15 +129,50 @@ class UpdateService {
       return null;
     }
     final notes = (map['body'] ?? '').toString().trim();
-    // Abrimos siempre la pagina del release para evitar descargar el setup de
-    // forma directa/automatica y dejar que el usuario elija el instalador.
-    final url = (map['html_url'] ?? '').toString();
-    if (url.isEmpty) {
+    final releasePageUrl = (map['html_url'] ?? '').toString();
+    if (releasePageUrl.isEmpty) {
       return null;
     }
+
+    String downloadUrl = releasePageUrl;
+    final assets = map['assets'];
+    if (assets is List) {
+      String? setupExe;
+      String? anyExe;
+      String? msix;
+      String? zip;
+      for (final item in assets) {
+        if (item is! Map<String, dynamic>) {
+          continue;
+        }
+        final name = (item['name'] ?? '').toString().toLowerCase();
+        final candidate = (item['browser_download_url'] ?? '').toString();
+        if (candidate.isEmpty) {
+          continue;
+        }
+        if (name.endsWith('.exe')) {
+          anyExe ??= candidate;
+          if (name.contains('setup')) {
+            setupExe ??= candidate;
+          }
+          continue;
+        }
+        if (name.endsWith('.msix')) {
+          msix ??= candidate;
+          continue;
+        }
+        if (name.endsWith('.zip')) {
+          zip ??= candidate;
+        }
+      }
+      downloadUrl = setupExe ?? anyExe ?? msix ?? zip ?? releasePageUrl;
+    }
+
     return ReleaseInfo(
       tag: tag,
-      url: url,
+      url: releasePageUrl,
+      releasePageUrl: releasePageUrl,
+      downloadUrl: downloadUrl,
       notes: notes,
       isPrerelease: map['prerelease'] == true,
     );
