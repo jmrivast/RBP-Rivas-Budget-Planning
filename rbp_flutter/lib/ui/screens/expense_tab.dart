@@ -4,9 +4,18 @@ import 'package:provider/provider.dart';
 import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
 import '../theme/app_icon_button.dart';
+import '../widgets/guided_showcase.dart';
 
 class ExpenseTab extends StatefulWidget {
-  const ExpenseTab({super.key});
+  const ExpenseTab({
+    super.key,
+    this.guideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+  });
+  final GlobalKey? guideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
 
   @override
   State<ExpenseTab> createState() => _ExpenseTabState();
@@ -91,128 +100,144 @@ class _ExpenseTabState extends State<ExpenseTab> {
   Widget build(BuildContext context) {
     return Consumer<FinanceProvider>(
       builder: (context, finance, _) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Registrar gasto',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: AppColors.cardBg,
-                      border: Border.all(color: AppColors.cardBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 260,
-                          child: TextField(
-                            controller: _amountCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            decoration: const InputDecoration(
-                                labelText: 'Monto RD\$', hintText: '500'),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: 320,
-                          child: TextField(
-                            controller: _descCtrl,
-                            decoration: const InputDecoration(
-                                labelText: 'Descripcion',
-                                hintText: 'Supermercado'),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 200,
-                              child: TextField(
-                                controller: _dateCtrl,
-                                decoration: const InputDecoration(
-                                    labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            AppIconButton(
-                              onPressed: _pickDate,
-                              icon: Icons.calendar_month,
-                              color: AppColors.primary,
-                              hoverColor: AppColors.hoverPrimary,
-                              tooltip: 'Elegir fecha',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: 260,
-                          child: DropdownButtonFormField<int>(
-                            initialValue: _categoryId,
-                            items: finance.categories
-                                .where((c) => c.id != null)
-                                .map(
-                                  (cat) => DropdownMenuItem<int>(
-                                    value: cat.id,
-                                    child: Text(cat.name),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) =>
-                                setState(() => _categoryId = value),
-                            decoration:
-                                const InputDecoration(labelText: 'Categoria'),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: 260,
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _source,
-                            items: const [
-                              DropdownMenuItem(
-                                  value: 'sueldo',
-                                  child: Text('Sueldo del periodo')),
-                              DropdownMenuItem(
-                                  value: 'ahorro', child: Text('Ahorro total')),
-                            ],
-                            onChanged: (value) =>
-                                setState(() => _source = value ?? 'sueldo'),
-                            decoration: const InputDecoration(
-                                labelText: 'Descontar de'),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilledButton.icon(
-                            onPressed:
-                                finance.isLoading ? null : () => _save(finance),
-                            icon: const Icon(Icons.save),
-                            label: const Text('Guardar gasto'),
-                          ),
-                        ),
-                      ],
-                    ),
+        final formSection = Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Registrar gasto',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: AppColors.cardBg,
+                    border: Border.all(color: AppColors.cardBorder),
                   ),
-                ],
-              ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 260,
+                        child: TextField(
+                          controller: _amountCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Monto RD\$', hintText: '500'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: 320,
+                        child: TextField(
+                          controller: _descCtrl,
+                          decoration: const InputDecoration(
+                              labelText: 'Descripcion',
+                              hintText: 'Supermercado'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 200,
+                            child: TextField(
+                              controller: _dateCtrl,
+                              decoration: const InputDecoration(
+                                  labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          AppIconButton(
+                            onPressed: _pickDate,
+                            icon: Icons.calendar_month,
+                            color: AppColors.primary,
+                            hoverColor: AppColors.hoverPrimary,
+                            tooltip: 'Elegir fecha',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: 260,
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _categoryId,
+                          items: finance.categories
+                              .where((c) => c.id != null)
+                              .map(
+                                (cat) => DropdownMenuItem<int>(
+                                  value: cat.id,
+                                  child: Text(cat.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _categoryId = value),
+                          decoration:
+                              const InputDecoration(labelText: 'Categoria'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: 260,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _source,
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'sueldo',
+                                child: Text('Sueldo del periodo')),
+                            DropdownMenuItem(
+                                value: 'ahorro', child: Text('Ahorro total')),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _source = value ?? 'sueldo'),
+                          decoration:
+                              const InputDecoration(labelText: 'Descontar de'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.icon(
+                          onPressed:
+                              finance.isLoading ? null : () => _save(finance),
+                          icon: const Icon(Icons.save),
+                          label: const Text('Guardar gasto'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );
+
+        final guidedFormSection = widget.guideKey == null
+            ? formSection
+            : GuidedShowcase(
+                showcaseKey: widget.guideKey!,
+                title: 'Nuevo gasto',
+                description: '- Ingresa monto, descripcion y fecha del gasto.\n'
+                    '- Selecciona categoria para el reporte.\n'
+                    '- En Descontar de, elige sueldo del periodo o ahorro total.',
+                onNext: widget.onGuideNext,
+                onPrevious: widget.onGuidePrevious,
+                child: formSection,
+              );
+
+        final content = Padding(
+          padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
+          child: guidedFormSection,
+        );
+        return content;
       },
     );
   }

@@ -1043,8 +1043,8 @@ For each `RecentItem`:
 - Title "Salario" (size 18, weight 600)
 - TextField: "Salario base {mode_label} RD$" (hint: "25000"), width 260
 - Button: "Guardar" (icon: save, bgcolor: primary blue)
-- Subtitle: "Salario variable por quincena" (size 14, subtitle color)
-- TextField: "Salario esta quincena (Q{c} {mm}/{yyyy}) RD$" (hint: "Opcional: monto solo para esta quincena"), width 320
+- Subtitle: "Ajustar salario de esta quincena" (size 14, subtitle color)
+- TextField: "Monto real de esta quincena (Q{c} {mm}/{yyyy}) RD$" (hint: "Ejemplo: 40% en Q1 y 60% en Q2"), width 320
 - Buttons row: "Guardar quincena" (primary) + "Usar base" (outlined, resets override)
 - Note text: In mensual mode, quincena salary fields are disabled
 - Help text at bottom explaining the mode

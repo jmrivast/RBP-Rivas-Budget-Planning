@@ -6,10 +6,19 @@ import '../../providers/finance_provider.dart';
 import '../../utils/currency_formatter.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/edit_goal_dialog.dart';
+import '../widgets/guided_showcase.dart';
 import '../widgets/savings_goal_item.dart';
 
 class SavingsTab extends StatefulWidget {
-  const SavingsTab({super.key});
+  const SavingsTab({
+    super.key,
+    this.guideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+  });
+  final GlobalKey? guideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
 
   @override
   State<SavingsTab> createState() => _SavingsTabState();
@@ -48,7 +57,7 @@ class _SavingsTabState extends State<SavingsTab> {
         final totalSavings = data?.totalSavings ?? 0;
         final periodSavings = data?.periodSavings ?? 0;
 
-        return LayoutBuilder(
+        final content = LayoutBuilder(
           builder: (context, viewport) {
             final goalsHeight = (viewport.maxHeight * 0.34).clamp(220.0, 360.0);
             return SingleChildScrollView(
@@ -228,22 +237,35 @@ class _SavingsTabState extends State<SavingsTab> {
                           ),
                         );
 
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: leftCard),
-                              const SizedBox(width: 12),
-                              Expanded(child: rightCard),
-                            ],
-                          );
+                        final topCards = isWide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: leftCard),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: rightCard),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  leftCard,
+                                  const SizedBox(height: 10),
+                                  rightCard,
+                                ],
+                              );
+                        if (widget.guideKey == null) {
+                          return topCards;
                         }
-                        return Column(
-                          children: [
-                            leftCard,
-                            const SizedBox(height: 10),
-                            rightCard,
-                          ],
+                        return GuidedShowcase(
+                          showcaseKey: widget.guideKey!,
+                          title: 'Ahorro',
+                          description:
+                              '- Izquierda: deposito de ahorro del periodo.\n'
+                              '- Derecha: retiro y aporte extra al ahorro total.\n'
+                              '- Debajo gestionas metas de ahorro.',
+                          onNext: widget.onGuideNext,
+                          onPrevious: widget.onGuidePrevious,
+                          child: topCards,
                         );
                       },
                     ),
@@ -353,6 +375,8 @@ class _SavingsTabState extends State<SavingsTab> {
             );
           },
         );
+
+        return content;
       },
     );
   }

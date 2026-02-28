@@ -6,10 +6,19 @@ import '../../providers/finance_provider.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/edit_income_dialog.dart';
 import '../theme/app_icon_button.dart';
+import '../widgets/guided_showcase.dart';
 import '../widgets/income_item.dart';
 
 class IncomeTab extends StatefulWidget {
-  const IncomeTab({super.key});
+  const IncomeTab({
+    super.key,
+    this.guideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+  });
+  final GlobalKey? guideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
 
   @override
   State<IncomeTab> createState() => _IncomeTabState();
@@ -85,288 +94,331 @@ class _IncomeTabState extends State<IncomeTab> {
         return FutureBuilder<void>(
           future: _loadPeriodData(finance),
           builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
+            final body = snapshot.connectionState != ConnectionState.done
+                ? const Center(child: CircularProgressIndicator())
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 980;
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 980;
-
-                final salaryPanel = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Salario',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 260,
-                          child: TextField(
-                            controller: _salaryCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Salario base ${finance.periodMode} RD\$',
-                              hintText: '25000',
-                            ),
-                          ),
-                        ),
-                        FilledButton.icon(
-                          onPressed: () async {
-                            final value =
-                                double.tryParse(_salaryCtrl.text.trim());
-                            if (value == null || value < 0) {
-                              _show('Salario invalido.');
-                              return;
-                            }
-                            await finance.setSalary(value);
-                            _show('Salario base guardado correctamente.');
-                          },
-                          icon: const Icon(Icons.save),
-                          label: const Text('Guardar'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Salario variable por quincena',
-                      style: TextStyle(fontSize: 14, color: AppColors.subtitle),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 330,
-                          child: TextField(
-                            controller: _overrideCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Salario esta quincena (Q${finance.cycle} ${finance.month.toString().padLeft(2, '0')}/${finance.year}) RD\$',
-                            ),
-                            enabled: finance.periodMode != 'mensual',
-                          ),
-                        ),
-                        FilledButton.icon(
-                          onPressed: finance.periodMode == 'mensual'
-                              ? null
-                              : () async {
-                                  final value = double.tryParse(
-                                      _overrideCtrl.text.trim());
+                      final salaryPanel = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Salario',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 260,
+                                child: TextField(
+                                  controller: _salaryCtrl,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText:
+                                        'Salario base ${finance.periodMode} RD\$',
+                                    hintText: '25000',
+                                  ),
+                                ),
+                              ),
+                              FilledButton.icon(
+                                onPressed: () async {
+                                  final value =
+                                      double.tryParse(_salaryCtrl.text.trim());
                                   if (value == null || value < 0) {
-                                    _show('Monto invalido.');
+                                    _show('Salario invalido.');
                                     return;
                                   }
-                                  await finance.setSalaryOverride(
-                                    finance.year,
-                                    finance.month,
-                                    finance.cycle,
-                                    value,
-                                  );
-                                  _show('Salario de quincena guardado.');
+                                  await finance.setSalary(value);
+                                  _show('Salario base guardado correctamente.');
                                 },
-                          icon: const Icon(Icons.event_available),
-                          label: const Text('Guardar quincena'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: finance.periodMode == 'mensual'
-                              ? null
-                              : () async {
-                                  await finance.deleteSalaryOverride(
-                                    finance.year,
-                                    finance.month,
-                                    finance.cycle,
-                                  );
-                                  _overrideCtrl.clear();
-                                  _show(
-                                      'Salario de quincena restablecido al salario base.');
-                                },
-                          icon: const Icon(Icons.restart_alt),
-                          label: const Text('Usar base'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      finance.periodMode == 'mensual'
-                          ? 'En modo mensual se usa solo el salario base del mes.'
-                          : 'En modo quincenal puedes ajustar montos por quincena.',
-                      style: TextStyle(fontSize: 12, color: AppColors.subtitle),
-                    ),
-                  ],
-                );
-
-                final addIncomePanel = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Agregar ingreso',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: 320,
-                      child: TextField(
-                        controller: _amountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration:
-                            const InputDecoration(labelText: 'Monto RD\$'),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: 440,
-                      child: TextField(
-                        controller: _descCtrl,
-                        decoration:
-                            const InputDecoration(labelText: 'Descripcion'),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 280,
-                          child: TextField(
-                            controller: _dateCtrl,
-                            decoration: const InputDecoration(
-                                labelText: 'Fecha', hintText: 'YYYY-MM-DD'),
+                                icon: const Icon(Icons.save),
+                                label: const Text('Guardar'),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        AppIconButton(
-                          onPressed: _pickDate,
-                          icon: Icons.calendar_month,
-                          color: AppColors.primary,
-                          hoverColor: AppColors.hoverPrimary,
-                          tooltip: 'Elegir fecha',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        overlayColor: AppColors.hoverSuccess,
-                      ),
-                      onPressed: () async {
-                        final amount = double.tryParse(_amountCtrl.text.trim());
-                        final desc = _descCtrl.text.trim();
-                        if (amount == null || amount <= 0 || desc.isEmpty) {
-                          _show('Completa campos.');
-                          return;
-                        }
-                        await finance.addIncome(
-                            amount, desc, _dateCtrl.text.trim());
-                        _amountCtrl.clear();
-                        _descCtrl.clear();
-                        _dateCtrl.text =
-                            DateTime.now().toIso8601String().split('T').first;
-                        _show('Ingreso registrado.');
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('Agregar'),
-                    ),
-                  ],
-                );
-
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isWide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 7, child: salaryPanel),
-                            const SizedBox(width: 12),
-                            Expanded(flex: 5, child: addIncomePanel),
-                          ],
-                        )
-                      else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            salaryPanel,
-                            const SizedBox(height: 12),
-                            addIncomePanel,
-                          ],
-                        ),
-                      const SizedBox(height: 14),
-                      const Divider(height: 1),
-                      const SizedBox(height: 12),
-                      const Text('Ingresos extras',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBg,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.cardBorder),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Ajustar salario de esta quincena',
+                            style: TextStyle(
+                                fontSize: 14, color: AppColors.subtitle),
                           ),
-                          child: finance.incomes.isEmpty
-                              ? Align(
-                                  alignment: Alignment.topLeft,
-                                  child: Text(
-                                    'Sin ingresos extras',
-                                    style: TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        color: AppColors.subtitle),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 330,
+                                child: TextField(
+                                  controller: _overrideCtrl,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText:
+                                        'Monto real de esta quincena (Q${finance.cycle} ${finance.month.toString().padLeft(2, '0')}/${finance.year}) RD\$',
                                   ),
-                                )
-                              : ListView.builder(
-                                  itemCount: finance.incomes.length,
-                                  itemBuilder: (context, index) {
-                                    final income = finance.incomes[index];
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 6),
-                                      child: IncomeItem(
-                                        income: income,
-                                        onEdit: () => showEditIncomeDialog(
-                                            context,
-                                            finance: finance,
-                                            income: income),
-                                        onDelete: () async {
-                                          final ok = await showConfirmDialog(
-                                            context,
-                                            title: 'Eliminar ingreso',
-                                            message:
-                                                'Esta accion no se puede deshacer.',
-                                            confirmLabel: 'Eliminar',
+                                  enabled: finance.periodMode != 'mensual',
+                                ),
+                              ),
+                              FilledButton.icon(
+                                onPressed: finance.periodMode == 'mensual'
+                                    ? null
+                                    : () async {
+                                        final value = double.tryParse(
+                                            _overrideCtrl.text.trim());
+                                        if (value == null || value < 0) {
+                                          _show('Monto invalido.');
+                                          return;
+                                        }
+                                        await finance.setSalaryOverride(
+                                          finance.year,
+                                          finance.month,
+                                          finance.cycle,
+                                          value,
+                                        );
+                                        _show('Salario de quincena guardado.');
+                                      },
+                                icon: const Icon(Icons.event_available),
+                                label: const Text('Guardar quincena'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: finance.periodMode == 'mensual'
+                                    ? null
+                                    : () async {
+                                        await finance.deleteSalaryOverride(
+                                          finance.year,
+                                          finance.month,
+                                          finance.cycle,
+                                        );
+                                        _overrideCtrl.clear();
+                                        _show(
+                                            'Salario de quincena restablecido al salario base.');
+                                      },
+                                icon: const Icon(Icons.restart_alt),
+                                label: const Text('Usar base'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            finance.periodMode == 'mensual'
+                                ? 'En modo mensual se usa solo el salario base del mes.'
+                                : 'Si cobras diferente entre Q1 y Q2, ajusta aqui el monto real de esta quincena (ej. 40% en Q1 y 60% en Q2).',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.subtitle),
+                          ),
+                        ],
+                      );
+
+                      final addIncomePanel = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Agregar ingreso',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 320,
+                            child: TextField(
+                              controller: _amountCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: const InputDecoration(
+                                  labelText: 'Monto RD\$'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 440,
+                            child: TextField(
+                              controller: _descCtrl,
+                              decoration: const InputDecoration(
+                                  labelText: 'Descripcion'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 280,
+                                child: TextField(
+                                  controller: _dateCtrl,
+                                  decoration: const InputDecoration(
+                                      labelText: 'Fecha',
+                                      hintText: 'YYYY-MM-DD'),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              AppIconButton(
+                                onPressed: _pickDate,
+                                icon: Icons.calendar_month,
+                                color: AppColors.primary,
+                                hoverColor: AppColors.hoverPrimary,
+                                tooltip: 'Elegir fecha',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              overlayColor: AppColors.hoverSuccess,
+                            ),
+                            onPressed: () async {
+                              final amount =
+                                  double.tryParse(_amountCtrl.text.trim());
+                              final desc = _descCtrl.text.trim();
+                              if (amount == null ||
+                                  amount <= 0 ||
+                                  desc.isEmpty) {
+                                _show('Completa campos.');
+                                return;
+                              }
+                              await finance.addIncome(
+                                  amount, desc, _dateCtrl.text.trim());
+                              _amountCtrl.clear();
+                              _descCtrl.clear();
+                              _dateCtrl.text = DateTime.now()
+                                  .toIso8601String()
+                                  .split('T')
+                                  .first;
+                              _show('Ingreso registrado.');
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Agregar'),
+                          ),
+                        ],
+                      );
+
+                      final topSection = isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 7, child: salaryPanel),
+                                const SizedBox(width: 12),
+                                Expanded(flex: 5, child: addIncomePanel),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                salaryPanel,
+                                const SizedBox(height: 12),
+                                addIncomePanel,
+                              ],
+                            );
+
+                      final guidedTopSection = widget.guideKey == null
+                          ? topSection
+                          : GuidedShowcase(
+                              showcaseKey: widget.guideKey!,
+                              title: 'Ingresos',
+                              description:
+                                  '- Define salario base del periodo.\n'
+                                  '- Si cobras diferente entre Q1 y Q2, ajusta el monto real de esta quincena.\n'
+                                  '- Registra ingresos extra con monto, descripcion y fecha.',
+                              onNext: widget.onGuideNext,
+                              onPrevious: widget.onGuidePrevious,
+                              child: topSection,
+                            );
+
+                      final content = Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            guidedTopSection,
+                            const SizedBox(height: 14),
+                            const Divider(height: 1),
+                            const SizedBox(height: 12),
+                            const Text('Ingresos extras',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border:
+                                      Border.all(color: AppColors.cardBorder),
+                                ),
+                                child: finance.incomes.isEmpty
+                                    ? Align(
+                                        alignment: Alignment.topLeft,
+                                        child: Text(
+                                          'Sin ingresos extras',
+                                          style: TextStyle(
+                                              fontStyle: FontStyle.italic,
+                                              color: AppColors.subtitle),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: finance.incomes.length,
+                                        itemBuilder: (context, index) {
+                                          final income = finance.incomes[index];
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 6),
+                                            child: IncomeItem(
+                                              income: income,
+                                              onEdit: () =>
+                                                  showEditIncomeDialog(context,
+                                                      finance: finance,
+                                                      income: income),
+                                              onDelete: () async {
+                                                final ok =
+                                                    await showConfirmDialog(
+                                                  context,
+                                                  title: 'Eliminar ingreso',
+                                                  message:
+                                                      'Esta accion no se puede deshacer.',
+                                                  confirmLabel: 'Eliminar',
+                                                );
+                                                if (!ok) {
+                                                  return;
+                                                }
+                                                await finance
+                                                    .deleteIncome(income.id!);
+                                              },
+                                            ),
                                           );
-                                          if (!ok) {
-                                            return;
-                                          }
-                                          await finance
-                                              .deleteIncome(income.id!);
                                         },
                                       ),
-                                    );
-                                  },
-                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                      );
+
+                      return content;
+                    },
+                  );
+            if (widget.guideKey == null ||
+                snapshot.connectionState == ConnectionState.done) {
+              return body;
+            }
+            return GuidedShowcase(
+              showcaseKey: widget.guideKey!,
+              title: 'Ingresos',
+              description: '- Define salario base del periodo.\n'
+                  '- Si cobras diferente entre Q1 y Q2, ajusta el monto real de esta quincena.\n'
+                  '- Registra ingresos extra con monto, descripcion y fecha.',
+              onNext: widget.onGuideNext,
+              onPrevious: widget.onGuidePrevious,
+              child: body,
             );
           },
         );

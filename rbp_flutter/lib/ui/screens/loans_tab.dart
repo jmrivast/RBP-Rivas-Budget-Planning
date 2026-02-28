@@ -5,10 +5,19 @@ import 'package:rbp_flutter/providers/finance_provider.dart';
 import 'package:rbp_flutter/ui/dialogs/confirm_dialog.dart';
 import 'package:rbp_flutter/ui/dialogs/edit_loan_dialog.dart';
 import 'package:rbp_flutter/ui/theme/app_icon_button.dart';
+import 'package:rbp_flutter/ui/widgets/guided_showcase.dart';
 import 'package:rbp_flutter/ui/widgets/loan_item.dart';
 
 class LoansTab extends StatefulWidget {
-  const LoansTab({super.key});
+  const LoansTab({
+    super.key,
+    this.guideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+  });
+  final GlobalKey? guideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
 
   @override
   State<LoansTab> createState() => _LoansTabState();
@@ -88,62 +97,81 @@ class _LoansTabState extends State<LoansTab> {
   Widget build(BuildContext context) {
     return Consumer<FinanceProvider>(
       builder: (context, finance, _) {
-        return Padding(
+        final topSection = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Dinero prestado',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 280,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: finance.loans.isEmpty
+                    ? Align(
+                        alignment: Alignment.topLeft,
+                        child: Text('Sin prestamos',
+                            style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: AppColors.subtitle)),
+                      )
+                    : ListView.builder(
+                        itemCount: finance.loans.length,
+                        itemBuilder: (context, index) {
+                          final loan = finance.loans[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: LoanItem(
+                              loan: loan,
+                              onMarkPaid: () => finance.markLoanPaid(loan.id!),
+                              onEdit: () => showEditLoanDialog(context,
+                                  finance: finance, loan: loan),
+                              onDelete: () async {
+                                final ok = await showConfirmDialog(
+                                  context,
+                                  title: 'Eliminar prestamo',
+                                  message: 'Esta accion no se puede deshacer.',
+                                  confirmLabel: 'Eliminar',
+                                );
+                                if (!ok) {
+                                  return;
+                                }
+                                await finance.deleteLoan(loan.id!);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ],
+        );
+
+        final guidedTopSection = widget.guideKey == null
+            ? topSection
+            : GuidedShowcase(
+                showcaseKey: widget.guideKey!,
+                title: 'Prestamos',
+                description: '- Aqui ves prestamos pendientes y su estado.\n'
+                    '- Registra persona, monto, fecha y motivo.\n'
+                    '- En "Descontar de..." elige gasto, ahorro o ninguno.',
+                onNext: widget.onGuideNext,
+                onPrevious: widget.onGuidePrevious,
+                child: topSection,
+              );
+
+        final content = Padding(
           padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Dinero prestado',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: finance.loans.isEmpty
-                      ? Align(
-                          alignment: Alignment.topLeft,
-                          child: Text('Sin prestamos',
-                              style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: AppColors.subtitle)),
-                        )
-                      : ListView.builder(
-                          itemCount: finance.loans.length,
-                          itemBuilder: (context, index) {
-                            final loan = finance.loans[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: LoanItem(
-                                loan: loan,
-                                onMarkPaid: () =>
-                                    finance.markLoanPaid(loan.id!),
-                                onEdit: () => showEditLoanDialog(context,
-                                    finance: finance, loan: loan),
-                                onDelete: () async {
-                                  final ok = await showConfirmDialog(
-                                    context,
-                                    title: 'Eliminar prestamo',
-                                    message:
-                                        'Esta accion no se puede deshacer.',
-                                    confirmLabel: 'Eliminar',
-                                  );
-                                  if (!ok) {
-                                    return;
-                                  }
-                                  await finance.deleteLoan(loan.id!);
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ),
+              guidedTopSection,
               const SizedBox(height: 12),
               const Divider(height: 1),
               const SizedBox(height: 10),
@@ -225,9 +253,11 @@ class _LoansTabState extends State<LoansTab> {
                 icon: const Icon(Icons.save),
                 label: const Text('Guardar'),
               ),
+              const SizedBox(height: 8),
             ],
           ),
         );
+        return SingleChildScrollView(child: content);
       },
     );
   }

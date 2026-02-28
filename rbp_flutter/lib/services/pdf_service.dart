@@ -34,6 +34,7 @@ class PdfService {
     final outputPath = p.join(reportsDir.path, outputName);
 
     final logo = await _loadLogo();
+    final fonts = await _loadPdfFonts();
     final pendingLoans = loans.where((loan) => !loan.isPaidBool).toList();
     final totalExpenses = dashboard.totalExpensesSalary;
     final totalFixed = dashboard.totalFixed;
@@ -43,7 +44,14 @@ class PdfService {
     final dineroInicial = dashboard.dineroInicial;
     final dineroDisponible = dashboard.dineroDisponible;
 
-    final doc = pw.Document();
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: fonts.base,
+        bold: fonts.bold,
+        italic: fonts.italic,
+        boldItalic: fonts.boldItalic,
+      ),
+    );
     doc.addPage(
       pw.MultiPage(
         pageTheme: const pw.PageTheme(
@@ -52,7 +60,7 @@ class PdfService {
         ),
         footer: (_) => pw.Center(
           child: pw.Text(
-            'RBP - Rivas Budget Planning | Generado automaticamente',
+            'RBP - Finanzas Personales | Generado automaticamente',
             style: pw.TextStyle(
               color: _footerGray,
               fontSize: 8,
@@ -188,7 +196,7 @@ class PdfService {
             left: 35 * _mm,
             top: 6 * _mm,
             child: pw.Text(
-              'RBP  -  Rivas Budget Planning',
+              'RBP  -  Finanzas Personales',
               style: pw.TextStyle(
                 color: PdfColors.white,
                 fontWeight: pw.FontWeight.bold,
@@ -317,6 +325,22 @@ class PdfService {
     }
   }
 
+  Future<_PdfFonts> _loadPdfFonts() async {
+    final regularData =
+        await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final boldData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+    final italicData =
+        await rootBundle.load('assets/fonts/NotoSans-Italic.ttf');
+    final boldItalicData =
+        await rootBundle.load('assets/fonts/NotoSans-BoldItalic.ttf');
+    return _PdfFonts(
+      base: pw.Font.ttf(regularData),
+      bold: pw.Font.ttf(boldData),
+      italic: pw.Font.ttf(italicData),
+      boldItalic: pw.Font.ttf(boldItalicData),
+    );
+  }
+
   Future<Directory> _ensureReportsDir() async {
     final docs = await _documentsDirectoryProvider();
     final dir = Directory(p.join(docs.path, 'reportes'));
@@ -370,4 +394,18 @@ class PdfService {
     }
     return names.join(', ');
   }
+}
+
+class _PdfFonts {
+  _PdfFonts({
+    required this.base,
+    required this.bold,
+    required this.italic,
+    required this.boldItalic,
+  });
+
+  final pw.Font base;
+  final pw.Font bold;
+  final pw.Font italic;
+  final pw.Font boldItalic;
 }

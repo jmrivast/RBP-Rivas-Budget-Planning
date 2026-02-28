@@ -10,6 +10,8 @@ import 'package:rbp_flutter/services/csv_service.dart';
 import 'package:rbp_flutter/services/pdf_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory sandbox;
   late Directory docsDir;
 

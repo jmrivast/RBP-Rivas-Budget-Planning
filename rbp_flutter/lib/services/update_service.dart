@@ -68,10 +68,54 @@ class UpdateService {
     if (current.preRelease.isNotEmpty && latest.preRelease.isEmpty) {
       return true;
     }
-    if (current.preRelease == latest.preRelease) {
-      return false;
+    return _comparePreRelease(current.preRelease, latest.preRelease) < 0;
+  }
+
+  static int _comparePreRelease(String a, String b) {
+    if (a == b) {
+      return 0;
     }
-    return latest.preRelease.compareTo(current.preRelease) > 0;
+    if (a.isEmpty && b.isNotEmpty) {
+      return 1;
+    }
+    if (a.isNotEmpty && b.isEmpty) {
+      return -1;
+    }
+    final left = a.split('.');
+    final right = b.split('.');
+    final maxLen = left.length > right.length ? left.length : right.length;
+    for (var i = 0; i < maxLen; i++) {
+      final l = i < left.length ? left[i] : null;
+      final r = i < right.length ? right[i] : null;
+      if (l == null && r == null) {
+        return 0;
+      }
+      if (l == null) {
+        return -1;
+      }
+      if (r == null) {
+        return 1;
+      }
+      final lNum = int.tryParse(l);
+      final rNum = int.tryParse(r);
+      if (lNum != null && rNum != null) {
+        if (lNum != rNum) {
+          return lNum.compareTo(rNum);
+        }
+        continue;
+      }
+      if (lNum != null && rNum == null) {
+        return -1;
+      }
+      if (lNum == null && rNum != null) {
+        return 1;
+      }
+      final cmp = l.compareTo(r);
+      if (cmp != 0) {
+        return cmp;
+      }
+    }
+    return 0;
   }
 
   ReleaseInfo? _toReleaseInfo(Map<String, dynamic> map) {

@@ -10,6 +10,7 @@ import 'package:rbp_flutter/ui/dialogs/confirm_dialog.dart';
 import 'package:rbp_flutter/ui/dialogs/custom_quincena_dialog.dart';
 import 'package:rbp_flutter/ui/dialogs/edit_expense_dialog.dart';
 import 'package:rbp_flutter/ui/widgets/expense_list_item.dart';
+import 'package:rbp_flutter/ui/widgets/guided_showcase.dart';
 import 'package:rbp_flutter/ui/widgets/pie_chart_widget.dart';
 import 'package:rbp_flutter/ui/widgets/period_nav_bar.dart';
 import 'package:rbp_flutter/ui/widgets/stat_card.dart';
@@ -18,8 +19,18 @@ import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 
 class DashboardTab extends StatelessWidget {
-  const DashboardTab({super.key});
+  const DashboardTab({
+    super.key,
+    this.guideKey,
+    this.amountsGuideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+  });
   static final _exportDelivery = ExportDeliveryService();
+  final GlobalKey? guideKey;
+  final GlobalKey? amountsGuideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
 
   Future<void> _showChart(BuildContext context, FinanceProvider finance) async {
     final data = finance.dashboard;
@@ -170,25 +181,74 @@ class DashboardTab extends StatelessWidget {
       ),
     ];
 
+    final periodBar = PeriodNavBar(
+      label: periodTitle,
+      isMonthly: isMonthly,
+      onPrev: finance.goToPreviousPeriod,
+      onToday: finance.goToCurrentPeriod,
+      onNext: finance.goToNextPeriod,
+      onCalendar: !isMonthly
+          ? () => showCustomQuincenaDialog(context, finance: finance)
+          : null,
+      onChart: () => _showChart(context, finance),
+      onPdf: () => _exportPdf(context, finance),
+      onCsv: () => _exportCsv(context, finance),
+    );
+
+    final guidedPeriodBar = guideKey == null
+        ? periodBar
+        : GuidedShowcase(
+            showcaseKey: guideKey!,
+            title: 'Resumen y reporte',
+            description: '- Cambia de periodo con flechas o calendario.\n'
+                '- Boton Grafico: distribucion por categoria.\n'
+                '- Boton PDF: genera reporte.\n'
+                '- Boton CSV: exporta datos tabulares.',
+            onNext: onGuideNext,
+            onPrevious: onGuidePrevious,
+            child: periodBar,
+          );
+
+    final amountsAnchor = amountsGuideKey == null
+        ? const SizedBox.shrink()
+        : GuidedShowcase(
+            showcaseKey: amountsGuideKey!,
+            title: 'Montos del resumen',
+            description:
+                '- Dinero inicial = salario base + ingresos extra - ahorro del periodo.\n'
+                '- Total gastado = suma de gastos del periodo.\n'
+                '- Prestamos pend. = prestamos no pagados.\n'
+                '- Dinero disponible = dinero inicial - total gastado - pagos fijos - prestamos pend.\n'
+                '- Promedio diario = total gastado / dias transcurridos.',
+            onNext: onGuideNext,
+            onPrevious: onGuidePrevious,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: const Text(
+                  'Montos del resumen',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PeriodNavBar(
-            label: periodTitle,
-            isMonthly: isMonthly,
-            onPrev: finance.goToPreviousPeriod,
-            onToday: finance.goToCurrentPeriod,
-            onNext: finance.goToNextPeriod,
-            onCalendar: !isMonthly
-                ? () => showCustomQuincenaDialog(context, finance: finance)
-                : null,
-            onChart: () => _showChart(context, finance),
-            onPdf: () => _exportPdf(context, finance),
-            onCsv: () => _exportCsv(context, finance),
-          ),
+          guidedPeriodBar,
           const SizedBox(height: 8),
+          amountsAnchor,
+          if (amountsGuideKey != null) const SizedBox(height: 6),
           LayoutBuilder(
             builder: (context, constraints) {
               final columns = constraints.maxWidth >= 1200

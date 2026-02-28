@@ -159,8 +159,8 @@ class AppColors {
 }
 
 class AppStrings {
-  static const appTitle = 'RBP - Rivas Budget Planning';
-  static const appSubtitle = 'Rivas Budget Planning';
+  static const appTitle = 'RBP - Finanzas Personales';
+  static const appSubtitle = 'Finanzas Personales';
 }
 
 class AppDefaults {

@@ -1,4 +1,4 @@
-; NSIS installer script for RBP - Rivas Budget Planning (Windows)
+; NSIS installer script for RBP - Finanzas Personales (Windows)
 ; Build app first:
 ;   flutter build windows --release
 ;
@@ -14,10 +14,10 @@ Unicode true
 
 !ifndef APP_NAME
 !define APP_NAME "RBP"
-!define APP_FULL_NAME "RBP - Rivas Budget Planning"
+!define APP_FULL_NAME "RBP - Finanzas Personales"
 !endif
 !ifndef APP_PUBLISHER
-  !define APP_PUBLISHER "Rivas Budget Planning"
+  !define APP_PUBLISHER "RBP"
 !endif
 !ifndef APP_EXE_NAME
   !define APP_EXE_NAME "rbp_flutter.exe"
@@ -53,7 +53,7 @@ VIAddVersionKey "CompanyName" "${APP_PUBLISHER}"
 VIAddVersionKey "FileDescription" "${APP_NAME} Setup"
 VIAddVersionKey "FileVersion" "${APP_VERSION}"
 VIAddVersionKey "ProductVersion" "${APP_VERSION}"
-VIAddVersionKey "LegalCopyright" "Copyright (c) Rivas Budget Planning"
+VIAddVersionKey "LegalCopyright" "Copyright (c) RBP - Finanzas Personales"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY

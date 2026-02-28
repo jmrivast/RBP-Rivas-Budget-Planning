@@ -26,7 +26,7 @@ Future<void> _initPlatformServices() async {
     try {
       await windowManager.ensureInitialized();
       const windowOptions = WindowOptions(
-        title: 'RBP - Rivas Budget Planning',
+        title: 'RBP - Finanzas Personales',
         minimumSize: Size(900, 600),
       );
       await windowManager.waitUntilReadyToShow(windowOptions, () async {

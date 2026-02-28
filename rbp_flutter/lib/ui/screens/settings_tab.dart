@@ -12,9 +12,20 @@ import '../dialogs/confirm_dialog.dart';
 import '../dialogs/rename_category_dialog.dart';
 import '../dialogs/update_available_dialog.dart';
 import '../widgets/category_item.dart';
+import '../widgets/guided_showcase.dart';
 
 class SettingsTab extends StatefulWidget {
-  const SettingsTab({super.key});
+  const SettingsTab({
+    super.key,
+    this.guideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+    this.onStartGuidedTour,
+  });
+  final GlobalKey? guideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
+  final VoidCallback? onStartGuidedTour;
 
   @override
   State<SettingsTab> createState() => _SettingsTabState();
@@ -164,335 +175,364 @@ class _SettingsTabState extends State<SettingsTab> {
         return FutureBuilder<void>(
           future: _loadSettings(finance),
           builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Configuracion',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Personaliza frecuencia, dias de cobro, exportacion y categorias.',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.subtitle),
-                        ),
-                        const SizedBox(height: 10),
-                        const Divider(height: 1),
-                        const SizedBox(height: 10),
-                        const Text('General',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Wrap(
-                                  spacing: 16,
-                                  runSpacing: 8,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 280,
-                                      child: DropdownButtonFormField<String>(
-                                        initialValue: _periodMode,
-                                        items: const [
-                                          DropdownMenuItem(
-                                              value: 'quincenal',
-                                              child: Text('Quincenal')),
-                                          DropdownMenuItem(
-                                              value: 'mensual',
-                                              child: Text('Mensual')),
-                                        ],
-                                        onChanged: (value) => setState(() =>
-                                            _periodMode = value ?? 'quincenal'),
-                                        decoration: const InputDecoration(
-                                            labelText:
-                                                'Frecuencia de reporte y salario'),
+            final body = snapshot.connectionState != ConnectionState.done
+                ? const Center(child: CircularProgressIndicator())
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final generalCard = Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 16,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 280,
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: _periodMode,
+                                      items: const [
+                                        DropdownMenuItem(
+                                            value: 'quincenal',
+                                            child: Text('Quincenal')),
+                                        DropdownMenuItem(
+                                            value: 'mensual',
+                                            child: Text('Mensual')),
+                                      ],
+                                      onChanged: (value) => setState(() =>
+                                          _periodMode = value ?? 'quincenal'),
+                                      decoration: const InputDecoration(
+                                          labelText:
+                                              'Frecuencia de reporte y salario'),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 240,
+                                    child: DropdownButtonFormField<String>(
+                                      key: ValueKey(
+                                          'theme-${settings.themePreset}'),
+                                      initialValue: settings.themePreset,
+                                      items: AppColors.presets
+                                          .map(
+                                            (p) => DropdownMenuItem(
+                                              value: p.key,
+                                              child: Text(p.label),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (value) async {
+                                        if (value == null) {
+                                          return;
+                                        }
+                                        await settings.updateThemePreset(value);
+                                        if (context.mounted) {
+                                          _show(
+                                              'Tema aplicado: ${AppColors.presets.firstWhere((p) => p.key == value).label}');
+                                        }
+                                      },
+                                      decoration: const InputDecoration(
+                                        labelText: 'Tema visual',
                                       ),
                                     ),
-                                    SizedBox(
-                                      width: 240,
-                                      child: DropdownButtonFormField<String>(
-                                        key: ValueKey(
-                                            'theme-${settings.themePreset}'),
-                                        initialValue: settings.themePreset,
-                                        items: AppColors.presets
-                                            .map(
-                                              (p) => DropdownMenuItem(
-                                                value: p.key,
-                                                child: Text(p.label),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged: (value) async {
-                                          if (value == null) {
-                                            return;
-                                          }
-                                          await settings
-                                              .updateThemePreset(value);
-                                          if (context.mounted) {
-                                            _show(
-                                                'Tema aplicado: ${AppColors.presets.firstWhere((p) => p.key == value).label}');
-                                          }
-                                        },
-                                        decoration: const InputDecoration(
-                                          labelText: 'Tema visual',
-                                        ),
-                                      ),
+                                  ),
+                                  SizedBox(
+                                    width: 320,
+                                    child: SwitchListTile(
+                                      value: _autoExport,
+                                      onChanged: (value) =>
+                                          setState(() => _autoExport = value),
+                                      title: const Text(
+                                          'Exportacion automatica al cerrar periodo'),
+                                      contentPadding: EdgeInsets.zero,
                                     ),
-                                    SizedBox(
-                                      width: 320,
-                                      child: SwitchListTile(
-                                        value: _autoExport,
-                                        onChanged: (value) =>
-                                            setState(() => _autoExport = value),
-                                        title: const Text(
-                                            'Exportacion automatica al cerrar periodo'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
+                                  ),
+                                  SizedBox(
+                                    width: 340,
+                                    child: SwitchListTile(
+                                      value: _includeBeta,
+                                      onChanged: (value) =>
+                                          setState(() => _includeBeta = value),
+                                      title: const Text(
+                                          'Incluir versiones beta en actualizaciones'),
+                                      contentPadding: EdgeInsets.zero,
                                     ),
-                                    SizedBox(
-                                      width: 340,
-                                      child: SwitchListTile(
-                                        value: _includeBeta,
-                                        onChanged: (value) => setState(
-                                            () => _includeBeta = value),
-                                        title: const Text(
-                                            'Incluir versiones beta en actualizaciones'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 16,
+                                runSpacing: 8,
+                                children: [
+                                  SizedBox(
+                                    width: 170,
+                                    child: TextField(
+                                      controller: _q1Ctrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Dia cobro quincena 1'),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 16,
-                                  runSpacing: 8,
-                                  children: [
-                                    SizedBox(
-                                      width: 170,
-                                      child: TextField(
-                                        controller: _q1Ctrl,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                            labelText: 'Dia cobro quincena 1'),
-                                      ),
+                                  ),
+                                  SizedBox(
+                                    width: 170,
+                                    child: TextField(
+                                      controller: _q2Ctrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Dia cobro quincena 2'),
                                     ),
-                                    SizedBox(
-                                      width: 170,
-                                      child: TextField(
-                                        controller: _q2Ctrl,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                            labelText: 'Dia cobro quincena 2'),
-                                      ),
+                                  ),
+                                  SizedBox(
+                                    width: 170,
+                                    child: TextField(
+                                      controller: _mCtrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Dia cobro mensual'),
                                     ),
-                                    SizedBox(
-                                      width: 170,
-                                      child: TextField(
-                                        controller: _mCtrl,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                            labelText: 'Dia cobro mensual'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Quincenal: Q1 inicia en dia 1 y Q2 en dia 2.\nMensual: inicia en ese dia y termina el dia anterior del proximo mes.',
-                                  style: TextStyle(
-                                      fontSize: 12, color: AppColors.subtitle),
-                                ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 8,
-                                  children: [
-                                    FilledButton.icon(
-                                      onPressed: () => _saveGeneral(finance),
-                                      icon: const Icon(Icons.save),
-                                      label: const Text('Guardar configuracion'),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _checkForUpdatesManual(finance),
-                                      icon: const Icon(Icons.system_update),
-                                      label: const Text('Buscar actualizacion'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Quincenal: Q1 inicia en dia 1 y Q2 en dia 2.\nMensual: inicia en ese dia y termina el dia anterior del proximo mes.',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.subtitle),
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 8,
+                                children: [
+                                  FilledButton.icon(
+                                    onPressed: () => _saveGeneral(finance),
+                                    icon: const Icon(Icons.save),
+                                    label: const Text('Guardar configuracion'),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _checkForUpdatesManual(finance),
+                                    icon: const Icon(Icons.system_update),
+                                    label: const Text('Buscar actualizacion'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1),
-                        const SizedBox(height: 10),
-                        const Text('Respaldo y restauracion',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 8,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: () async {
-                                try {
-                                  final path =
-                                      await _backupService.createBackup();
-                                  _show('Respaldo creado: ${p.basename(path)}');
-                                } catch (e) {
-                                  _show('No se pudo crear respaldo: $e');
-                                }
-                              },
-                              icon: const Icon(Icons.backup),
-                              label: const Text('Crear respaldo'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  final source = await _backupService
-                                      .pickAndRestoreBackup();
-                                  if (source == null) {
-                                    return;
-                                  }
-                                  await finance.refreshAll();
-                                  _show(
-                                      'Respaldo restaurado: ${p.basename(source)}');
-                                } catch (e) {
-                                  _show('No se pudo restaurar respaldo: $e');
-                                }
-                              },
-                              icon: const Icon(Icons.restore),
-                              label: const Text('Restaurar respaldo'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1),
-                        const SizedBox(height: 10),
-                        const Text('Categorias',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 8,
-                          children: [
-                            SizedBox(
-                              width: 260,
-                              child: TextField(
-                                controller: _newCategoryCtrl,
-                                decoration: const InputDecoration(
-                                    labelText: 'Nueva categoria',
-                                    hintText: 'Ej: Educacion'),
+                      );
+
+                      final guidedGeneralCard = widget.guideKey == null
+                          ? generalCard
+                          : GuidedShowcase(
+                              showcaseKey: widget.guideKey!,
+                              title: 'Configuracion',
+                              description:
+                                  '- Ajusta frecuencia y dias de cobro.\n'
+                                  '- Cambia el tema visual.\n'
+                                  '- Gestiona actualizaciones.\n'
+                                  '- Desde aqui puedes relanzar esta guia.',
+                              onNext: widget.onGuideNext,
+                              onPrevious: widget.onGuidePrevious,
+                              nextLabel: 'Finalizar',
+                              child: generalCard,
+                            );
+
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Configuracion',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Personaliza frecuencia, dias de cobro, exportacion y categorias.',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.subtitle),
                               ),
-                            ),
-                            FilledButton.icon(
-                              onPressed: () async {
-                                final name = _newCategoryCtrl.text.trim();
-                                if (name.isEmpty) {
-                                  _show('Completa campos.');
-                                  return;
-                                }
-                                try {
-                                  await finance.addCategory(name);
-                                  _newCategoryCtrl.clear();
-                                  _show('Categoria creada correctamente.');
-                                } catch (e) {
-                                  _show('No se pudo crear la categoria: $e');
-                                }
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Agregar categoria'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.success,
-                                overlayColor: AppColors.hoverSuccess,
+                              const SizedBox(height: 10),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+                              const Text('General',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              guidedGeneralCard,
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+                              const Text('Respaldo y restauracion',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 8,
+                                children: [
+                                  FilledButton.icon(
+                                    onPressed: () async {
+                                      try {
+                                        final path =
+                                            await _backupService.createBackup();
+                                        _show(
+                                            'Respaldo creado: ${p.basename(path)}');
+                                      } catch (e) {
+                                        _show('No se pudo crear respaldo: $e');
+                                      }
+                                    },
+                                    icon: const Icon(Icons.backup),
+                                    label: const Text('Crear respaldo'),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () async {
+                                      try {
+                                        final source = await _backupService
+                                            .pickAndRestoreBackup();
+                                        if (source == null) {
+                                          return;
+                                        }
+                                        await finance.refreshAll();
+                                        _show(
+                                            'Respaldo restaurado: ${p.basename(source)}');
+                                      } catch (e) {
+                                        _show(
+                                            'No se pudo restaurar respaldo: $e');
+                                      }
+                                    },
+                                    icon: const Icon(Icons.restore),
+                                    label: const Text('Restaurar respaldo'),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 300,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBg,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.cardBorder),
-                            ),
-                            child: finance.categories.isEmpty
-                                ? Align(
-                                    alignment: Alignment.topLeft,
-                                    child: Text('Sin categorias',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic,
-                                            color: AppColors.subtitle)),
-                                  )
-                                : ListView.builder(
-                                    itemCount: finance.categories.length,
-                                    itemBuilder: (context, index) {
-                                      final cat = finance.categories[index];
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 6),
-                                        child: CategoryItem(
-                                          category: cat,
-                                          onRename: () =>
-                                              showRenameCategoryDialog(
-                                            context,
-                                            finance: finance,
-                                            category: cat,
-                                          ),
-                                          onDelete: () async {
-                                            final ok = await showConfirmDialog(
-                                              context,
-                                              title: 'Eliminar categoria',
-                                              message:
-                                                  'Se eliminara si no esta en uso.',
-                                              confirmLabel: 'Eliminar',
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+                              const Text('Categorias',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 8,
+                                children: [
+                                  SizedBox(
+                                    width: 260,
+                                    child: TextField(
+                                      controller: _newCategoryCtrl,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Nueva categoria',
+                                          hintText: 'Ej: Educacion'),
+                                    ),
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: () async {
+                                      final name = _newCategoryCtrl.text.trim();
+                                      if (name.isEmpty) {
+                                        _show('Completa campos.');
+                                        return;
+                                      }
+                                      try {
+                                        await finance.addCategory(name);
+                                        _newCategoryCtrl.clear();
+                                        _show(
+                                            'Categoria creada correctamente.');
+                                      } catch (e) {
+                                        _show(
+                                            'No se pudo crear la categoria: $e');
+                                      }
+                                    },
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Agregar categoria'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.success,
+                                      overlayColor: AppColors.hoverSuccess,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: 300,
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardBg,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        Border.all(color: AppColors.cardBorder),
+                                  ),
+                                  child: finance.categories.isEmpty
+                                      ? Align(
+                                          alignment: Alignment.topLeft,
+                                          child: Text('Sin categorias',
+                                              style: TextStyle(
+                                                  fontStyle: FontStyle.italic,
+                                                  color: AppColors.subtitle)),
+                                        )
+                                      : ListView.builder(
+                                          itemCount: finance.categories.length,
+                                          itemBuilder: (context, index) {
+                                            final cat =
+                                                finance.categories[index];
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 6),
+                                              child: CategoryItem(
+                                                category: cat,
+                                                onRename: () =>
+                                                    showRenameCategoryDialog(
+                                                  context,
+                                                  finance: finance,
+                                                  category: cat,
+                                                ),
+                                                onDelete: () async {
+                                                  final ok =
+                                                      await showConfirmDialog(
+                                                    context,
+                                                    title: 'Eliminar categoria',
+                                                    message:
+                                                        'Se eliminara si no esta en uso.',
+                                                    confirmLabel: 'Eliminar',
+                                                  );
+                                                  if (!ok) {
+                                                    return;
+                                                  }
+                                                  try {
+                                                    await finance
+                                                        .deleteCategory(
+                                                            cat.id!);
+                                                    _show(
+                                                        'Categoria eliminada.');
+                                                  } catch (e) {
+                                                    _show('$e');
+                                                  }
+                                                },
+                                              ),
                                             );
-                                            if (!ok) {
-                                              return;
-                                            }
-                                            try {
-                                              await finance
-                                                  .deleteCategory(cat.id!);
-                                              _show('Categoria eliminada.');
-                                            } catch (e) {
-                                              _show('$e');
-                                            }
                                           },
                                         ),
-                                      );
-                                    },
-                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
+                      );
+                    },
+                  );
+            return body;
           },
         );
       },

@@ -5,10 +5,19 @@ import '../../config/constants.dart';
 import '../../providers/finance_provider.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/edit_fixed_payment_dialog.dart';
+import '../widgets/guided_showcase.dart';
 import '../widgets/fixed_payment_item.dart';
 
 class FixedPaymentsTab extends StatefulWidget {
-  const FixedPaymentsTab({super.key});
+  const FixedPaymentsTab({
+    super.key,
+    this.guideKey,
+    this.onGuideNext,
+    this.onGuidePrevious,
+  });
+  final GlobalKey? guideKey;
+  final VoidCallback? onGuideNext;
+  final VoidCallback? onGuidePrevious;
 
   @override
   State<FixedPaymentsTab> createState() => _FixedPaymentsTabState();
@@ -76,65 +85,86 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
       builder: (context, finance, _) {
         final fixed = finance.dashboard?.fixedPayments ?? const [];
 
-        return Padding(
+        final topSection = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pagos fijos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 280,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: fixed.isEmpty
+                    ? Align(
+                        alignment: Alignment.topLeft,
+                        child: Text('Sin pagos fijos',
+                            style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: AppColors.subtitle)),
+                      )
+                    : ListView.builder(
+                        itemCount: fixed.length,
+                        itemBuilder: (context, index) {
+                          final payment = fixed[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: FixedPaymentItem(
+                              payment: payment,
+                              onTogglePaid: (paid) => finance
+                                  .toggleFixedPaymentPaid(payment.id, paid),
+                              onEdit: () => showEditFixedPaymentDialog(
+                                context,
+                                finance: finance,
+                                payment: payment,
+                                categories: finance.categories,
+                              ),
+                              onDelete: () async {
+                                final ok = await showConfirmDialog(
+                                  context,
+                                  title: 'Eliminar pago fijo',
+                                  message: 'Se marcara como inactivo.',
+                                  confirmLabel: 'Eliminar',
+                                );
+                                if (!ok) {
+                                  return;
+                                }
+                                await finance.deleteFixedPayment(payment.id);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ],
+        );
+
+        final guidedTopSection = widget.guideKey == null
+            ? topSection
+            : GuidedShowcase(
+                showcaseKey: widget.guideKey!,
+                title: 'Pagos fijos',
+                description: '- Aqui ves tus pagos recurrentes.\n'
+                    '- Puedes marcar pagado, editar o eliminar.\n'
+                    '- Abajo agregas nuevos pagos fijos.',
+                onNext: widget.onGuideNext,
+                onPrevious: widget.onGuidePrevious,
+                child: topSection,
+              );
+
+        final content = Padding(
           padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Pagos fijos',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: fixed.isEmpty
-                      ? Align(
-                          alignment: Alignment.topLeft,
-                          child: Text('Sin pagos fijos',
-                              style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: AppColors.subtitle)),
-                        )
-                      : ListView.builder(
-                          itemCount: fixed.length,
-                          itemBuilder: (context, index) {
-                            final payment = fixed[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: FixedPaymentItem(
-                                payment: payment,
-                                onTogglePaid: (paid) => finance
-                                    .toggleFixedPaymentPaid(payment.id, paid),
-                                onEdit: () => showEditFixedPaymentDialog(
-                                  context,
-                                  finance: finance,
-                                  payment: payment,
-                                  categories: finance.categories,
-                                ),
-                                onDelete: () async {
-                                  final ok = await showConfirmDialog(
-                                    context,
-                                    title: 'Eliminar pago fijo',
-                                    message: 'Se marcara como inactivo.',
-                                    confirmLabel: 'Eliminar',
-                                  );
-                                  if (!ok) {
-                                    return;
-                                  }
-                                  await finance.deleteFixedPayment(payment.id);
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ),
+              guidedTopSection,
               const SizedBox(height: 12),
               const Divider(height: 1),
               const SizedBox(height: 10),
@@ -180,7 +210,8 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                       setState(() => _noFixedDate = value ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Sin fecha fija (marcar pagado manualmente)'),
+                  title:
+                      const Text('Sin fecha fija (marcar pagado manualmente)'),
                 ),
               ),
               const SizedBox(height: 6),
@@ -211,9 +242,11 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
                 icon: const Icon(Icons.save),
                 label: const Text('Guardar'),
               ),
+              const SizedBox(height: 8),
             ],
           ),
         );
+        return SingleChildScrollView(child: content);
       },
     );
   }
