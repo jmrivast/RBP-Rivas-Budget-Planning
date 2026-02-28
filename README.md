@@ -10,8 +10,8 @@ Aplicacion de escritorio para control de finanzas personales en Windows.
 4. Abre la app desde el acceso directo de escritorio o menu inicio.
 
 Notas:
-- Version estable actual: `2.0.0`.
-- Si Windows muestra advertencia de seguridad, valida que el archivo sea `RBP_Setup_2.0.0.exe`.
+- Version estable actual: `2.0.1`.
+- Si Windows muestra advertencia de seguridad, valida que el archivo sea `RBP_Setup_2.0.1.exe`.
 
 ## Build de instalador (equipo de desarrollo)
 
@@ -22,9 +22,9 @@ El instalador comercial de Windows usa **NSIS** (no Inno Setup).
 2. Instala NSIS (una sola vez):
    - `winget install -e --id NSIS.NSIS`
 3. Genera instalador:
-   - `powershell -ExecutionPolicy Bypass -File installer/build_nsis.ps1 -Version 2.0.0`
+   - `powershell -ExecutionPolicy Bypass -File installer/build_nsis.ps1 -Version 2.0.1`
 4. Resultado:
-   - `dist/RBP_Setup_2.0.0.exe`
+   - `dist/RBP_Setup_2.0.1.exe`
 
 ## Requisitos
 
@@ -43,7 +43,7 @@ El instalador comercial de Windows usa **NSIS** (no Inno Setup).
 
 - Las nuevas versiones se publican en **Releases**.
 - Se recomienda instalar siempre la ultima version estable.
-- Cambios de esta version: ver `RELEASE_NOTES_2.0.0.md`.
+- Cambios de esta version: ver `RELEASE_NOTES_2.0.1.md`.
 
 ## Soporte
 

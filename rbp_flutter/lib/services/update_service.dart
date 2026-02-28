@@ -124,26 +124,9 @@ class UpdateService {
       return null;
     }
     final notes = (map['body'] ?? '').toString().trim();
-    final assets = map['assets'];
-    String url = (map['html_url'] ?? '').toString();
-    if (assets is List) {
-      for (final item in assets) {
-        if (item is! Map<String, dynamic>) {
-          continue;
-        }
-        final name = (item['name'] ?? '').toString().toLowerCase();
-        if (!name.endsWith('.zip') &&
-            !name.endsWith('.msix') &&
-            !name.endsWith('.exe')) {
-          continue;
-        }
-        final candidate = (item['browser_download_url'] ?? '').toString();
-        if (candidate.isNotEmpty) {
-          url = candidate;
-          break;
-        }
-      }
-    }
+    // Abrimos siempre la pagina del release para evitar descargar el setup de
+    // forma directa/automatica y dejar que el usuario elija el instalador.
+    final url = (map['html_url'] ?? '').toString();
     if (url.isEmpty) {
       return null;
     }

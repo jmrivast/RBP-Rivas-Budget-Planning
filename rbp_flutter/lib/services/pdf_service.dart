@@ -38,9 +38,8 @@ class PdfService {
     final pendingLoans = loans.where((loan) => !loan.isPaidBool).toList();
     final totalExpenses = dashboard.totalExpensesSalary;
     final totalFixed = dashboard.totalFixed;
-    final totalLoans = pendingLoans
-        .where(_loanAffectsBudget)
-        .fold<double>(0, (sum, loan) => sum + loan.amount);
+    final totalLoans =
+        pendingLoans.fold<double>(0, (sum, loan) => sum + loan.amount);
     final dineroInicial = dashboard.dineroInicial;
     final dineroDisponible = dashboard.dineroDisponible;
 
@@ -371,11 +370,6 @@ class PdfService {
       return input;
     }
     return input.substring(0, maxLen);
-  }
-
-  bool _loanAffectsBudget(Loan loan) {
-    final deduction = loan.deductionType.trim().toLowerCase();
-    return deduction.isEmpty || deduction == 'ninguno';
   }
 
   String _categoryNames(String? ids, Map<int, String> categoriesById) {

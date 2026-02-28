@@ -60,7 +60,7 @@ Future<void> showUpdateAvailableDialog(
               }
             },
             icon: const Icon(Icons.download),
-            label: const Text('Descargar'),
+            label: const Text('Abrir descarga'),
           ),
         ],
       );
