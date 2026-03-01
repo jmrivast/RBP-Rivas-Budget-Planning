@@ -9,13 +9,15 @@ class FixedPaymentItem extends StatelessWidget {
   const FixedPaymentItem({
     super.key,
     required this.payment,
-    required this.onTogglePaid,
+    this.onMarkPaid,
+    this.onMarkUnpaid,
     required this.onEdit,
     required this.onDelete,
   });
 
   final FixedPaymentWithStatus payment;
-  final ValueChanged<bool> onTogglePaid;
+  final VoidCallback? onMarkPaid;
+  final VoidCallback? onMarkUnpaid;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -29,13 +31,6 @@ class FixedPaymentItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Tooltip(
-            message: 'Marcar como pagado en este periodo',
-            child: Checkbox(
-              value: payment.isPaid,
-              onChanged: (v) => onTogglePaid(v ?? false),
-            ),
-          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,6 +48,22 @@ class FixedPaymentItem extends StatelessWidget {
               ],
             ),
           ),
+          if (onMarkPaid != null)
+            AppIconButton(
+              onPressed: onMarkPaid,
+              icon: Icons.check_circle_outline,
+              color: AppColors.success,
+              hoverColor: AppColors.hoverSuccess,
+              tooltip: 'Marcar como pagado',
+            ),
+          if (onMarkUnpaid != null)
+            AppIconButton(
+              onPressed: onMarkUnpaid,
+              icon: Icons.remove_done_outlined,
+              color: AppColors.warn,
+              hoverColor: AppColors.hoverWarn,
+              tooltip: 'Marcar como no pagado',
+            ),
           Text(
             formatCurrency(payment.amount),
             style: const TextStyle(fontWeight: FontWeight.w700),

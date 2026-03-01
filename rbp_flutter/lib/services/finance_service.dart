@@ -242,12 +242,16 @@ class FinanceService {
         if (due.isBefore(start) || due.isAfter(end)) {
           continue;
         }
+        final dueReached =
+            !due.isAfter(DateTime(today.year, today.month, today.day));
         final status = await fixedPaymentRepo.getRecordStatus(
           payment.id!,
           year,
           month,
           cycle,
-          defaultStatus: 'paid',
+          // Pagos con fecha fija se consideran pagados automaticamente al
+          // llegar la fecha, salvo override manual a "pending".
+          defaultStatus: dueReached ? 'paid' : 'pending',
         );
         out.add(
           FixedPaymentWithStatus(
@@ -257,8 +261,7 @@ class FinanceService {
             dueDay: payment.dueDay,
             categoryId: payment.categoryId,
             isPaid: status == 'paid',
-            isOverdue:
-                !due.isAfter(DateTime(today.year, today.month, today.day)),
+            isOverdue: dueReached && status != 'paid',
             dueDate: _dateIso(due),
           ),
         );
