@@ -184,6 +184,23 @@ class FinanceProvider extends ChangeNotifier {
     }, refresh: () async {});
   }
 
+  Future<void> renameProfile(int profileId, String newUsername) async {
+    await _withMutation(() async {
+      await _service.renameProfile(profileId, newUsername);
+      await loadProfiles();
+    }, refresh: () async {});
+  }
+
+  Future<void> deleteProfile(
+    int profileId, {
+    String? pin,
+  }) async {
+    await _withMutation(() async {
+      await _service.deleteProfile(profileId, pin: pin);
+      await loadProfiles();
+    }, refresh: () async {});
+  }
+
   Future<void> goToPreviousPeriod() async {
     await _withMutation(() async {
       if (_periodMode == 'mensual') {

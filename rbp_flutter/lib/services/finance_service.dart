@@ -254,6 +254,53 @@ class FinanceService {
     );
   }
 
+  Future<void> renameProfile(int profileId, String newUsername) async {
+    await _ensureInit();
+    final profile = await userRepo.getById(profileId);
+    if (profile == null || profile.isActive != 1) {
+      throw Exception('Perfil no encontrado.');
+    }
+    final name = newUsername.trim();
+    if (name.isEmpty) {
+      throw Exception('Nombre de perfil requerido.');
+    }
+    final existing = await userRepo.getByUsername(name);
+    if (existing != null && existing.id != profileId) {
+      throw Exception('Ya existe un perfil con ese nombre.');
+    }
+    await userRepo.rename(profileId, name);
+  }
+
+  Future<void> deleteProfile(
+    int profileId, {
+    String? pin,
+  }) async {
+    await _ensureInit();
+    final profiles = await userRepo.getAllActive();
+    if (profiles.length <= 1) {
+      throw Exception('Debe existir al menos un perfil activo.');
+    }
+    if (profileId == userId) {
+      throw Exception(
+          'No puedes eliminar el perfil activo. Cambia a otro perfil primero.');
+    }
+    final profile = await userRepo.getById(profileId);
+    if (profile == null || profile.isActive != 1) {
+      throw Exception('Perfil no encontrado.');
+    }
+    if (profile.hasPin) {
+      final provided = (pin ?? '').trim();
+      if (!_isPinValid(provided, profile.pinLength)) {
+        throw Exception('PIN invalido.');
+      }
+      final hash = _hashPin(provided);
+      if (hash != profile.pinHash) {
+        throw Exception('PIN incorrecto.');
+      }
+    }
+    await userRepo.softDelete(profileId);
+  }
+
   int _readInt(String value, int fallback) {
     final parsed = int.tryParse(value.trim());
     if (parsed == null) {

@@ -239,6 +239,81 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  Future<void> _renameProfile(FinanceProvider finance, User profile) async {
+    final ctrl = TextEditingController(text: profile.username);
+    final nextName = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Renombrar perfil'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Nombre'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(ctrl.text.trim()),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+    final name = (nextName ?? '').trim();
+    if (name.isEmpty || name == profile.username) {
+      return;
+    }
+    try {
+      await finance.renameProfile(profile.id!, name);
+      _show('Perfil actualizado.');
+      setState(() {});
+    } catch (e) {
+      _show('No se pudo renombrar: $e');
+    }
+  }
+
+  Future<void> _deleteProfile(FinanceProvider finance, User profile) async {
+    if (profile.id == finance.activeProfile?.id) {
+      _show('Cambia a otro perfil antes de eliminar este.');
+      return;
+    }
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Eliminar perfil',
+      message:
+          'Se eliminara el perfil "${profile.username}" de la lista activa. Sus datos quedaran archivados localmente.',
+      confirmLabel: 'Eliminar',
+    );
+    if (!ok) {
+      return;
+    }
+    String? pin;
+    if (profile.hasPin) {
+      pin = await _promptPin(
+        username: profile.username,
+        pinLength: profile.pinLength,
+      );
+      if (pin == null || pin.isEmpty) {
+        return;
+      }
+    }
+    try {
+      await finance.deleteProfile(profile.id!, pin: pin);
+      if (_selectedProfileId == profile.id) {
+        _selectedProfileId = finance.activeProfile?.id;
+      }
+      _show('Perfil eliminado.');
+      setState(() {});
+    } catch (e) {
+      _show('No se pudo eliminar: $e');
+    }
+  }
+
   int? _parseDay(String raw, String label) {
     final value = int.tryParse(raw.trim());
     if (value == null || value < 1 || value > 31) {
@@ -380,162 +455,285 @@ class _SettingsTabState extends State<SettingsTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 8,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 260,
-                                      child: DropdownButtonFormField<int>(
-                                        initialValue: _selectedProfileId,
-                                        items: finance.profiles
-                                            .map(
-                                              (p) => DropdownMenuItem<int>(
-                                                value: p.id,
-                                                child: Text(
-                                                  p.hasPin
-                                                      ? '${p.username} (PIN)'
-                                                      : p.username,
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged: (value) => setState(
-                                            () => _selectedProfileId = value),
-                                        decoration: const InputDecoration(
-                                          labelText: 'Perfil activo',
-                                        ),
-                                      ),
-                                    ),
-                                    FilledButton.icon(
-                                      onPressed: _selectedProfileId == null
-                                          ? null
-                                          : () => _switchProfile(
-                                                finance,
-                                                _selectedProfileId!,
-                                              ),
-                                      icon: const Icon(Icons.switch_account),
-                                      label: const Text('Cambiar perfil'),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                const Divider(height: 1),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'Crear nuevo perfil',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 8,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 220,
-                                      child: TextField(
-                                        controller: _newProfileCtrl,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Nombre del perfil',
-                                          hintText: 'Ej: Casa / Trabajo',
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 140,
-                                      child: DropdownButtonFormField<int>(
-                                        initialValue: _profilePinLength,
-                                        items: const [
-                                          DropdownMenuItem(
-                                              value: 4, child: Text('PIN 4')),
-                                          DropdownMenuItem(
-                                              value: 6, child: Text('PIN 6')),
-                                        ],
-                                        onChanged: (value) => setState(() =>
-                                            _profilePinLength = value ?? 4),
-                                        decoration: const InputDecoration(
-                                          labelText: 'Seguridad',
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 160,
-                                      child: TextField(
-                                        controller: _newProfilePinCtrl,
-                                        obscureText: true,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'PIN (opcional)',
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 180,
-                                      child: TextField(
-                                        controller: _newProfilePinConfirmCtrl,
-                                        obscureText: true,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Confirmar PIN',
-                                        ),
-                                      ),
-                                    ),
-                                    FilledButton.icon(
-                                      onPressed: () => _createProfile(finance),
-                                      icon: const Icon(Icons.person_add),
-                                      label: const Text('Crear perfil'),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
                                 Text(
-                                  'Cada perfil guarda finanzas totalmente separadas. El PIN puede ser de 4 o 6 digitos.',
-                                  style: TextStyle(
-                                      fontSize: 12, color: AppColors.subtitle),
+                                  'Perfil actual: ${finance.activeProfile?.username ?? '-'}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 8,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Los formularios se muestran al abrir cada seccion.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.subtitle,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ExpansionTile(
+                                  tilePadding: EdgeInsets.zero,
+                                  title: const Text('Cambiar perfil'),
+                                  leading: const Icon(Icons.switch_account),
+                                  childrenPadding:
+                                      const EdgeInsets.only(bottom: 8),
                                   children: [
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 8,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 300,
+                                          child: DropdownButtonFormField<int>(
+                                            initialValue: _selectedProfileId,
+                                            items: finance.profiles
+                                                .map(
+                                                  (p) => DropdownMenuItem<int>(
+                                                    value: p.id,
+                                                    child: Text(
+                                                      p.hasPin
+                                                          ? '${p.username} (PIN)'
+                                                          : p.username,
+                                                    ),
+                                                  ),
+                                                )
+                                                .toList(),
+                                            onChanged: (value) => setState(() =>
+                                                _selectedProfileId = value),
+                                            decoration: const InputDecoration(
+                                              labelText: 'Selecciona perfil',
+                                            ),
+                                          ),
+                                        ),
+                                        FilledButton.icon(
+                                          onPressed: _selectedProfileId == null
+                                              ? null
+                                              : () => _switchProfile(
+                                                    finance,
+                                                    _selectedProfileId!,
+                                                  ),
+                                          icon: const Icon(Icons.login),
+                                          label: const Text('Entrar'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                ExpansionTile(
+                                  tilePadding: EdgeInsets.zero,
+                                  title: const Text('Crear nuevo perfil'),
+                                  leading: const Icon(Icons.person_add),
+                                  childrenPadding:
+                                      const EdgeInsets.only(bottom: 8),
+                                  children: [
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 8,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 240,
+                                          child: TextField(
+                                            controller: _newProfileCtrl,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Nombre del perfil',
+                                              hintText: 'Ej: Casa / Trabajo',
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 140,
+                                          child: DropdownButtonFormField<int>(
+                                            initialValue: _profilePinLength,
+                                            items: const [
+                                              DropdownMenuItem(
+                                                  value: 4,
+                                                  child: Text('PIN 4')),
+                                              DropdownMenuItem(
+                                                  value: 6,
+                                                  child: Text('PIN 6')),
+                                            ],
+                                            onChanged: (value) => setState(() =>
+                                                _profilePinLength = value ?? 4),
+                                            decoration: const InputDecoration(
+                                              labelText: 'Seguridad',
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 170,
+                                          child: TextField(
+                                            controller: _newProfilePinCtrl,
+                                            obscureText: true,
+                                            keyboardType: TextInputType.number,
+                                            decoration: const InputDecoration(
+                                              labelText: 'PIN (opcional)',
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 170,
+                                          child: TextField(
+                                            controller:
+                                                _newProfilePinConfirmCtrl,
+                                            obscureText: true,
+                                            keyboardType: TextInputType.number,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Confirmar PIN',
+                                            ),
+                                          ),
+                                        ),
+                                        FilledButton.icon(
+                                          onPressed: () =>
+                                              _createProfile(finance),
+                                          icon: const Icon(Icons.add),
+                                          label: const Text('Crear'),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Cada perfil guarda finanzas separadas. PIN opcional de 4 o 6 digitos.',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.subtitle),
+                                    ),
+                                  ],
+                                ),
+                                ExpansionTile(
+                                  tilePadding: EdgeInsets.zero,
+                                  title: const Text('Gestionar perfiles'),
+                                  leading: const Icon(Icons.manage_accounts),
+                                  childrenPadding:
+                                      const EdgeInsets.only(bottom: 8),
+                                  children: [
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 8,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 220,
+                                          child: DropdownButtonFormField<int>(
+                                            initialValue:
+                                                _activeProfilePinLength,
+                                            items: const [
+                                              DropdownMenuItem(
+                                                  value: 4,
+                                                  child: Text('PIN 4')),
+                                              DropdownMenuItem(
+                                                  value: 6,
+                                                  child: Text('PIN 6')),
+                                            ],
+                                            onChanged: (value) => setState(() =>
+                                                _activeProfilePinLength =
+                                                    value ?? 4),
+                                            decoration: const InputDecoration(
+                                              labelText: 'PIN perfil activo',
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 200,
+                                          child: TextField(
+                                            controller: _activeProfilePinCtrl,
+                                            obscureText: true,
+                                            keyboardType: TextInputType.number,
+                                            decoration: const InputDecoration(
+                                              labelText:
+                                                  'Nuevo PIN (vacio = quitar)',
+                                            ),
+                                          ),
+                                        ),
+                                        OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _saveActiveProfilePin(finance),
+                                          icon: const Icon(Icons.lock),
+                                          label: const Text('Guardar PIN'),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
                                     SizedBox(
-                                      width: 220,
-                                      child: DropdownButtonFormField<int>(
-                                        initialValue: _activeProfilePinLength,
-                                        items: const [
-                                          DropdownMenuItem(
-                                              value: 4, child: Text('PIN 4')),
-                                          DropdownMenuItem(
-                                              value: 6, child: Text('PIN 6')),
-                                        ],
-                                        onChanged: (value) => setState(() =>
-                                            _activeProfilePinLength =
-                                                value ?? 4),
-                                        decoration: const InputDecoration(
-                                          labelText: 'PIN perfil activo',
+                                      height: 190,
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.cardBg,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                              color: AppColors.cardBorder),
+                                        ),
+                                        child: ListView.builder(
+                                          itemCount: finance.profiles.length,
+                                          itemBuilder: (context, index) {
+                                            final profile =
+                                                finance.profiles[index];
+                                            final isActive = profile.id ==
+                                                finance.activeProfile?.id;
+                                            return ListTile(
+                                              dense: true,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8),
+                                              leading: Icon(
+                                                isActive
+                                                    ? Icons.person
+                                                    : Icons.person_outline,
+                                                color: isActive
+                                                    ? AppColors.primary
+                                                    : AppColors.iconNeutral,
+                                              ),
+                                              title: Text(
+                                                profile.hasPin
+                                                    ? '${profile.username} (PIN)'
+                                                    : profile.username,
+                                              ),
+                                              subtitle: Text(
+                                                isActive
+                                                    ? 'Perfil activo'
+                                                    : 'Perfil secundario',
+                                              ),
+                                              trailing: Wrap(
+                                                spacing: 2,
+                                                children: [
+                                                  IconButton(
+                                                    tooltip: 'Renombrar',
+                                                    onPressed: () =>
+                                                        _renameProfile(
+                                                            finance, profile),
+                                                    icon: const Icon(
+                                                        Icons.edit_outlined),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip: isActive
+                                                        ? 'No se puede eliminar el perfil activo'
+                                                        : 'Eliminar',
+                                                    onPressed: isActive
+                                                        ? null
+                                                        : () => _deleteProfile(
+                                                            finance, profile),
+                                                    icon: const Icon(
+                                                        Icons.delete_outline),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ),
                                     ),
-                                    SizedBox(
-                                      width: 180,
-                                      child: TextField(
-                                        controller: _activeProfilePinCtrl,
-                                        obscureText: true,
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText:
-                                              'Nuevo PIN (vacio = quitar)',
-                                        ),
-                                      ),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _saveActiveProfilePin(finance),
-                                      icon: const Icon(Icons.lock),
-                                      label: const Text('Guardar PIN'),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Proteccion: no se puede eliminar el perfil activo ni dejar la app sin perfiles.',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.subtitle),
                                     ),
                                   ],
                                 ),

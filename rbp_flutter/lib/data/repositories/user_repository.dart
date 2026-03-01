@@ -77,6 +77,15 @@ class UserRepository {
     );
   }
 
+  Future<int> softDelete(int userId) async {
+    return _dbHelper.update(
+      'users',
+      {'is_active': 0},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
   Future<int> ensureDefaultUser() async {
     final existing = await getByUsername('Jose');
     if (existing != null && existing.id != null) {
