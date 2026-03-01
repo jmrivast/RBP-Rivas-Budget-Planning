@@ -4,8 +4,19 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     email TEXT,
+    pin_hash TEXT,
+    pin_length INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT 1
+);
+''';
+
+  static const appSettings = '''
+CREATE TABLE IF NOT EXISTS app_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    setting_key TEXT NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ''';
 
@@ -234,6 +245,7 @@ CREATE TABLE IF NOT EXISTS custom_quincena (
 
   static const createStatements = <String>[
     users,
+    appSettings,
     categories,
     budgets,
     expenses,

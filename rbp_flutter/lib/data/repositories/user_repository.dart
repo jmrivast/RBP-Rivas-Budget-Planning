@@ -7,10 +7,17 @@ class UserRepository {
 
   final DatabaseHelper _dbHelper;
 
-  Future<int> create(String username, {String? email}) async {
+  Future<int> create(
+    String username, {
+    String? email,
+    String? pinHash,
+    int pinLength = 0,
+  }) async {
     return _dbHelper.insert('users', {
       'username': username,
       'email': email,
+      'pin_hash': pinHash,
+      'pin_length': pinLength,
     });
   }
 
@@ -47,6 +54,27 @@ class UserRepository {
       orderBy: 'id',
     );
     return rows.map(User.fromMap).toList();
+  }
+
+  Future<int> rename(int userId, String username) async {
+    return _dbHelper.update(
+      'users',
+      {'username': username},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<int> setPin(int userId, {String? pinHash, int pinLength = 0}) async {
+    return _dbHelper.update(
+      'users',
+      {
+        'pin_hash': pinHash,
+        'pin_length': pinLength,
+      },
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
   }
 
   Future<int> ensureDefaultUser() async {

@@ -9,6 +9,7 @@ import '../data/models/expense.dart';
 import '../data/models/extra_income.dart';
 import '../data/models/loan.dart';
 import '../data/models/savings_goal.dart';
+import '../data/models/user.dart';
 import '../services/finance_service.dart';
 import '../utils/date_helpers.dart' as dh;
 
@@ -35,6 +36,8 @@ class FinanceProvider extends ChangeNotifier {
   List<Loan> _loans = const [];
   List<SavingsGoal> _goals = const [];
   List<Expense> _expenses = const [];
+  List<User> _profiles = const [];
+  User? _activeProfile;
 
   bool get initialized => _initialized;
   bool get isLoading => _loading;
@@ -51,6 +54,8 @@ class FinanceProvider extends ChangeNotifier {
   List<Loan> get loans => _loans;
   List<SavingsGoal> get goals => _goals;
   List<Expense> get expenses => _expenses;
+  List<User> get profiles => _profiles;
+  User? get activeProfile => _activeProfile;
   FinanceService get service => _service;
 
   void setLicenseState({required bool activated, required bool trialMode}) {
@@ -75,6 +80,7 @@ class FinanceProvider extends ChangeNotifier {
       _periodMode = await _service.getPeriodMode();
       _cycle =
           _periodMode == 'mensual' ? 1 : await _service.getCycleForDate(now);
+      await loadProfiles();
       await refreshAll(notify: false);
       _initialized = true;
       _error = null;
@@ -125,6 +131,57 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> loadExpenses() async {
     _expenses = _dashboard?.rawExpenses ?? const [];
+  }
+
+  Future<void> loadProfiles() async {
+    _profiles = await _service.getProfiles();
+    _activeProfile = await _service.getActiveProfile();
+  }
+
+  Future<void> createProfile(
+    String username, {
+    String? pin,
+    int pinLength = 4,
+  }) async {
+    await _withMutation(() async {
+      await _service.createProfile(
+        username,
+        pin: pin,
+        pinLength: pinLength,
+      );
+      await loadProfiles();
+    }, refresh: () async {});
+  }
+
+  Future<void> switchProfile(
+    int profileId, {
+    String? pin,
+  }) async {
+    await _withMutation(() async {
+      await _service.switchProfile(profileId, pin: pin);
+      final now = DateTime.now();
+      _year = now.year;
+      _month = now.month;
+      _periodMode = await _service.getPeriodMode();
+      _cycle =
+          _periodMode == 'mensual' ? 1 : await _service.getCycleForDate(now);
+      await loadProfiles();
+    }, refresh: () => refreshAll(notify: false));
+  }
+
+  Future<void> setProfilePin(
+    int profileId, {
+    String? pin,
+    int pinLength = 4,
+  }) async {
+    await _withMutation(() async {
+      await _service.setProfilePin(
+        profileId,
+        pin: pin,
+        pinLength: pinLength,
+      );
+      await loadProfiles();
+    }, refresh: () async {});
   }
 
   Future<void> goToPreviousPeriod() async {

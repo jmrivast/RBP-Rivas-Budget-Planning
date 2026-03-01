@@ -1,4 +1,7 @@
 import 'dart:collection';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 
 import '../config/constants.dart';
 import '../data/database/database_helper.dart';
@@ -8,6 +11,7 @@ import '../data/models/dashboard_data.dart';
 import '../data/models/extra_income.dart';
 import '../data/models/loan.dart';
 import '../data/models/savings_goal.dart';
+import '../data/models/user.dart';
 import '../data/repositories/category_repository.dart';
 import '../data/repositories/expense_repository.dart';
 import '../data/repositories/fixed_payment_repository.dart';
@@ -57,6 +61,8 @@ class FinanceService {
   final CsvService csvService;
   final PdfService pdfService;
 
+  static const String _activeProfileKey = 'active_profile_id';
+
   int? userId;
   bool _initialized = false;
   String _periodMode = 'quincenal';
@@ -68,19 +74,8 @@ class FinanceService {
     if (_initialized) {
       return;
     }
-    final users = await userRepo.getAllActive();
-    if (users.isNotEmpty) {
-      userId = users.first.id;
-    } else {
-      userId = await userRepo.ensureDefaultUser();
-    }
-
-    final categories = await categoryRepo.getByUser(userId!);
-    if (categories.isEmpty) {
-      for (final name in AppDefaults.defaultCategories) {
-        await categoryRepo.create(userId!, name);
-      }
-    }
+    await _resolveActiveUser();
+    await _ensureDefaultCategoriesForCurrentUser();
 
     await _reloadSettingsCache();
     _initialized = true;
@@ -107,6 +102,156 @@ class FinanceService {
         await settingsRepo.getSetting(uid, 'monthly_pay_day',
             defaultValue: '1'),
         1);
+  }
+
+  Future<void> _resolveActiveUser() async {
+    final users = await userRepo.getAllActive();
+    if (users.isEmpty) {
+      userId = await userRepo.ensureDefaultUser();
+      await settingsRepo.setAppSetting(_activeProfileKey, '$userId');
+      return;
+    }
+
+    final saved = await settingsRepo.getAppSetting(
+      _activeProfileKey,
+      defaultValue: '',
+    );
+    final savedId = int.tryParse(saved.trim());
+    if (savedId != null && users.any((u) => u.id == savedId)) {
+      userId = savedId;
+      return;
+    }
+
+    userId = users.first.id;
+    await settingsRepo.setAppSetting(_activeProfileKey, '$userId');
+  }
+
+  Future<void> _ensureDefaultCategoriesForCurrentUser() async {
+    final uid = userId!;
+    final categories = await categoryRepo.getByUser(uid);
+    if (categories.isNotEmpty) {
+      return;
+    }
+    for (final name in AppDefaults.defaultCategories) {
+      await categoryRepo.create(uid, name);
+    }
+  }
+
+  String _hashPin(String pin) {
+    final normalized = pin.trim();
+    return sha256.convert(utf8.encode(normalized)).toString();
+  }
+
+  bool _isPinValid(String pin, int pinLength) {
+    final value = pin.trim();
+    if (pinLength != 4 && pinLength != 6) {
+      return false;
+    }
+    if (value.length != pinLength) {
+      return false;
+    }
+    return RegExp(r'^\d+$').hasMatch(value);
+  }
+
+  Future<List<User>> getProfiles() async {
+    await _ensureInit();
+    return userRepo.getAllActive();
+  }
+
+  Future<User?> getActiveProfile() async {
+    await _ensureInit();
+    final uid = userId;
+    if (uid == null) {
+      return null;
+    }
+    return userRepo.getById(uid);
+  }
+
+  Future<int> createProfile(
+    String username, {
+    String? pin,
+    int pinLength = 4,
+  }) async {
+    await _ensureInit();
+    final name = username.trim();
+    if (name.isEmpty) {
+      throw Exception('Nombre de perfil requerido.');
+    }
+    final existing = await userRepo.getByUsername(name);
+    if (existing != null) {
+      throw Exception('Ya existe un perfil con ese nombre.');
+    }
+
+    String? pinHash;
+    var normalizedLength = 0;
+    if (pin != null && pin.trim().isNotEmpty) {
+      if (!_isPinValid(pin, pinLength)) {
+        throw Exception('El PIN debe ser numerico de 4 o 6 digitos.');
+      }
+      pinHash = _hashPin(pin);
+      normalizedLength = pinLength;
+    }
+
+    final id = await userRepo.create(
+      name,
+      pinHash: pinHash,
+      pinLength: normalizedLength,
+    );
+    final previous = userId;
+    userId = id;
+    await _ensureDefaultCategoriesForCurrentUser();
+    userId = previous;
+    return id;
+  }
+
+  Future<void> switchProfile(
+    int profileId, {
+    String? pin,
+  }) async {
+    await _ensureInit();
+    final profile = await userRepo.getById(profileId);
+    if (profile == null || profile.isActive != 1) {
+      throw Exception('Perfil no encontrado.');
+    }
+    if (profile.hasPin) {
+      final provided = (pin ?? '').trim();
+      if (!_isPinValid(provided, profile.pinLength)) {
+        throw Exception('PIN invalido.');
+      }
+      final hash = _hashPin(provided);
+      if (hash != profile.pinHash) {
+        throw Exception('PIN incorrecto.');
+      }
+    }
+
+    userId = profileId;
+    await settingsRepo.setAppSetting(_activeProfileKey, '$profileId');
+    await _ensureDefaultCategoriesForCurrentUser();
+    await _reloadSettingsCache();
+  }
+
+  Future<void> setProfilePin(
+    int profileId, {
+    String? pin,
+    int pinLength = 4,
+  }) async {
+    await _ensureInit();
+    final profile = await userRepo.getById(profileId);
+    if (profile == null || profile.isActive != 1) {
+      throw Exception('Perfil no encontrado.');
+    }
+    if (pin == null || pin.trim().isEmpty) {
+      await userRepo.setPin(profileId, pinHash: null, pinLength: 0);
+      return;
+    }
+    if (!_isPinValid(pin, pinLength)) {
+      throw Exception('El PIN debe ser numerico de 4 o 6 digitos.');
+    }
+    await userRepo.setPin(
+      profileId,
+      pinHash: _hashPin(pin),
+      pinLength: pinLength,
+    );
   }
 
   int _readInt(String value, int fallback) {

@@ -7,6 +7,33 @@ class SettingsRepository {
 
   final DatabaseHelper _dbHelper;
 
+  Future<void> setAppSetting(String key, String value) async {
+    await _dbHelper.rawExecute(
+      '''
+INSERT INTO app_settings (setting_key, setting_value, updated_at)
+VALUES (?, ?, CURRENT_TIMESTAMP)
+ON CONFLICT(setting_key) DO UPDATE SET
+  setting_value = excluded.setting_value,
+  updated_at = CURRENT_TIMESTAMP
+''',
+      [key, value],
+    );
+  }
+
+  Future<String> getAppSetting(String key, {String defaultValue = ''}) async {
+    final rows = await _dbHelper.query(
+      'app_settings',
+      columns: ['setting_value'],
+      where: 'setting_key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return defaultValue;
+    }
+    return (rows.first['setting_value'] ?? defaultValue) as String;
+  }
+
   Future<void> setPeriodMode(int userId, String mode) async {
     final normalized =
         (mode.trim().toLowerCase() == 'mensual') ? 'mensual' : 'quincenal';

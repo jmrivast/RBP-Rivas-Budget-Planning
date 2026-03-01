@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
+import '../../data/models/user.dart';
 import '../../providers/finance_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/backup_service.dart';
@@ -25,11 +26,18 @@ class _SettingsTabState extends State<SettingsTab> {
   final _q2Ctrl = TextEditingController();
   final _mCtrl = TextEditingController();
   final _newCategoryCtrl = TextEditingController();
+  final _newProfileCtrl = TextEditingController();
+  final _newProfilePinCtrl = TextEditingController();
+  final _newProfilePinConfirmCtrl = TextEditingController();
+  final _activeProfilePinCtrl = TextEditingController();
 
   final _backupService = BackupService();
   final _updateService = UpdateService();
 
   String _periodMode = 'quincenal';
+  int _profilePinLength = 4;
+  int _activeProfilePinLength = 4;
+  int? _selectedProfileId;
   bool _autoExport = false;
   bool _includeBeta = false;
   bool _loaded = false;
@@ -40,6 +48,10 @@ class _SettingsTabState extends State<SettingsTab> {
     _q2Ctrl.dispose();
     _mCtrl.dispose();
     _newCategoryCtrl.dispose();
+    _newProfileCtrl.dispose();
+    _newProfilePinCtrl.dispose();
+    _newProfilePinConfirmCtrl.dispose();
+    _activeProfilePinCtrl.dispose();
     super.dispose();
   }
 
@@ -71,6 +83,160 @@ class _SettingsTabState extends State<SettingsTab> {
     }
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isValidPin(String pin, int length) {
+    if (length != 4 && length != 6) {
+      return false;
+    }
+    if (pin.length != length) {
+      return false;
+    }
+    return RegExp(r'^\d+$').hasMatch(pin);
+  }
+
+  Future<String?> _promptPin({
+    required String username,
+    required int pinLength,
+  }) async {
+    final ctrl = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('PIN de $username'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'PIN ($pinLength digitos)',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(ctrl.text.trim()),
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
+    return value?.trim();
+  }
+
+  Future<void> _createProfile(FinanceProvider finance) async {
+    final name = _newProfileCtrl.text.trim();
+    if (name.isEmpty) {
+      _show('Escribe el nombre del perfil.');
+      return;
+    }
+
+    final pin = _newProfilePinCtrl.text.trim();
+    final pinConfirm = _newProfilePinConfirmCtrl.text.trim();
+    if (pin.isNotEmpty || pinConfirm.isNotEmpty) {
+      if (!_isValidPin(pin, _profilePinLength)) {
+        _show('El PIN debe ser numerico de $_profilePinLength digitos.');
+        return;
+      }
+      if (pin != pinConfirm) {
+        _show('La confirmacion del PIN no coincide.');
+        return;
+      }
+    }
+
+    try {
+      await finance.createProfile(
+        name,
+        pin: pin.isEmpty ? null : pin,
+        pinLength: _profilePinLength,
+      );
+      _newProfileCtrl.clear();
+      _newProfilePinCtrl.clear();
+      _newProfilePinConfirmCtrl.clear();
+      _show('Perfil creado correctamente.');
+      setState(() {});
+    } catch (e) {
+      _show('No se pudo crear el perfil: $e');
+    }
+  }
+
+  Future<void> _switchProfile(FinanceProvider finance, int profileId) async {
+    final activeId = finance.activeProfile?.id;
+    if (profileId == activeId) {
+      _show('Ese perfil ya esta activo.');
+      return;
+    }
+    User? target;
+    for (final profile in finance.profiles) {
+      if (profile.id == profileId) {
+        target = profile;
+        break;
+      }
+    }
+    if (target == null) {
+      _show('Perfil no encontrado.');
+      return;
+    }
+    String? pin;
+    if (target.hasPin) {
+      pin = await _promptPin(
+        username: target.username,
+        pinLength: target.pinLength,
+      );
+      if (pin == null || pin.isEmpty) {
+        return;
+      }
+    }
+
+    try {
+      await finance.switchProfile(profileId, pin: pin);
+      if (!mounted) {
+        return;
+      }
+      await context.read<SettingsProvider>().loadThemePreset();
+      _loaded = false;
+      _selectedProfileId = profileId;
+      setState(() {});
+      _show('Perfil activo: ${target.username}');
+    } catch (e) {
+      _show('No se pudo cambiar perfil: $e');
+    }
+  }
+
+  Future<void> _saveActiveProfilePin(FinanceProvider finance) async {
+    final active = finance.activeProfile;
+    if (active?.id == null) {
+      _show('No hay perfil activo.');
+      return;
+    }
+    final pin = _activeProfilePinCtrl.text.trim();
+    try {
+      if (pin.isEmpty) {
+        await finance.setProfilePin(active!.id!, pin: null);
+        _show('PIN removido del perfil activo.');
+      } else {
+        if (!_isValidPin(pin, _activeProfilePinLength)) {
+          _show(
+              'El PIN debe ser numerico de $_activeProfilePinLength digitos.');
+          return;
+        }
+        await finance.setProfilePin(
+          active!.id!,
+          pin: pin,
+          pinLength: _activeProfilePinLength,
+        );
+        _show('PIN actualizado.');
+      }
+      _activeProfilePinCtrl.clear();
+    } catch (e) {
+      _show('No se pudo actualizar PIN: $e');
+    }
   }
 
   int? _parseDay(String raw, String label) {
@@ -168,6 +334,20 @@ class _SettingsTabState extends State<SettingsTab> {
               return const Center(child: CircularProgressIndicator());
             }
 
+            _selectedProfileId ??= finance.activeProfile?.id;
+            final currentPinLength = finance.activeProfile?.pinLength ?? 0;
+            if (currentPinLength == 4 || currentPinLength == 6) {
+              _activeProfilePinLength = currentPinLength;
+            }
+            final profileIds = finance.profiles
+                .map((profile) => profile.id)
+                .whereType<int>()
+                .toSet();
+            if (_selectedProfileId != null &&
+                !profileIds.contains(_selectedProfileId)) {
+              _selectedProfileId = finance.activeProfile?.id;
+            }
+
             return LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
@@ -188,6 +368,182 @@ class _SettingsTabState extends State<SettingsTab> {
                               fontSize: 12, color: AppColors.subtitle),
                         ),
                         const SizedBox(height: 10),
+                        const Divider(height: 1),
+                        const SizedBox(height: 10),
+                        const Text('Perfiles',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 260,
+                                      child: DropdownButtonFormField<int>(
+                                        initialValue: _selectedProfileId,
+                                        items: finance.profiles
+                                            .map(
+                                              (p) => DropdownMenuItem<int>(
+                                                value: p.id,
+                                                child: Text(
+                                                  p.hasPin
+                                                      ? '${p.username} (PIN)'
+                                                      : p.username,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (value) => setState(
+                                            () => _selectedProfileId = value),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Perfil activo',
+                                        ),
+                                      ),
+                                    ),
+                                    FilledButton.icon(
+                                      onPressed: _selectedProfileId == null
+                                          ? null
+                                          : () => _switchProfile(
+                                                finance,
+                                                _selectedProfileId!,
+                                              ),
+                                      icon: const Icon(Icons.switch_account),
+                                      label: const Text('Cambiar perfil'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                const Divider(height: 1),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Crear nuevo perfil',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 220,
+                                      child: TextField(
+                                        controller: _newProfileCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Nombre del perfil',
+                                          hintText: 'Ej: Casa / Trabajo',
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 140,
+                                      child: DropdownButtonFormField<int>(
+                                        initialValue: _profilePinLength,
+                                        items: const [
+                                          DropdownMenuItem(
+                                              value: 4, child: Text('PIN 4')),
+                                          DropdownMenuItem(
+                                              value: 6, child: Text('PIN 6')),
+                                        ],
+                                        onChanged: (value) => setState(() =>
+                                            _profilePinLength = value ?? 4),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Seguridad',
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 160,
+                                      child: TextField(
+                                        controller: _newProfilePinCtrl,
+                                        obscureText: true,
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'PIN (opcional)',
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 180,
+                                      child: TextField(
+                                        controller: _newProfilePinConfirmCtrl,
+                                        obscureText: true,
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Confirmar PIN',
+                                        ),
+                                      ),
+                                    ),
+                                    FilledButton.icon(
+                                      onPressed: () => _createProfile(finance),
+                                      icon: const Icon(Icons.person_add),
+                                      label: const Text('Crear perfil'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Cada perfil guarda finanzas totalmente separadas. El PIN puede ser de 4 o 6 digitos.',
+                                  style: TextStyle(
+                                      fontSize: 12, color: AppColors.subtitle),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 220,
+                                      child: DropdownButtonFormField<int>(
+                                        initialValue: _activeProfilePinLength,
+                                        items: const [
+                                          DropdownMenuItem(
+                                              value: 4, child: Text('PIN 4')),
+                                          DropdownMenuItem(
+                                              value: 6, child: Text('PIN 6')),
+                                        ],
+                                        onChanged: (value) => setState(() =>
+                                            _activeProfilePinLength =
+                                                value ?? 4),
+                                        decoration: const InputDecoration(
+                                          labelText: 'PIN perfil activo',
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 180,
+                                      child: TextField(
+                                        controller: _activeProfilePinCtrl,
+                                        obscureText: true,
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText:
+                                              'Nuevo PIN (vacio = quitar)',
+                                        ),
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          _saveActiveProfilePin(finance),
+                                      icon: const Icon(Icons.lock),
+                                      label: const Text('Guardar PIN'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         const Divider(height: 1),
                         const SizedBox(height: 10),
                         const Text('General',
@@ -326,7 +682,8 @@ class _SettingsTabState extends State<SettingsTab> {
                                     FilledButton.icon(
                                       onPressed: () => _saveGeneral(finance),
                                       icon: const Icon(Icons.save),
-                                      label: const Text('Guardar configuracion'),
+                                      label:
+                                          const Text('Guardar configuracion'),
                                     ),
                                     OutlinedButton.icon(
                                       onPressed: () =>

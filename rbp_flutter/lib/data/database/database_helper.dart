@@ -16,7 +16,7 @@ class DatabaseHelper {
   final String databaseName;
   final bool useDocumentsDirectory;
 
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   Database? _database;
 
@@ -31,7 +31,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     final path = await _resolveDatabasePath();
-    return openDatabase(
+    final db = await openDatabase(
       path,
       version: databaseVersion,
       onConfigure: (db) async {
@@ -40,6 +40,8 @@ class DatabaseHelper {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+    await _ensureSchemaCompatibility(db);
+    return db;
   }
 
   Future<String> _resolveDatabasePath() async {
@@ -61,7 +63,25 @@ class DatabaseHelper {
     }
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {}
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    await _ensureSchemaCompatibility(db);
+  }
+
+  Future<void> _ensureSchemaCompatibility(Database db) async {
+    await db.execute(SqlTables.appSettings);
+
+    final userColumns = await db.rawQuery("PRAGMA table_info(users);");
+    final names = userColumns
+        .map((row) => (row['name'] ?? '').toString().toLowerCase())
+        .toSet();
+    if (!names.contains('pin_hash')) {
+      await db.execute('ALTER TABLE users ADD COLUMN pin_hash TEXT;');
+    }
+    if (!names.contains('pin_length')) {
+      await db.execute(
+          'ALTER TABLE users ADD COLUMN pin_length INTEGER DEFAULT 0;');
+    }
+  }
 
   Future<int> insert(
     String table,

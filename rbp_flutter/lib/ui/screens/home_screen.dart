@@ -338,6 +338,9 @@ class _HomeScreenState extends State<HomeScreen>
         context.select<FinanceProvider, bool>((f) => f.initialized);
     final isTrialMode =
         context.select<FinanceProvider, bool>((f) => f.isTrialMode);
+    final activeProfileName = context.select<FinanceProvider, String>(
+      (f) => f.activeProfile?.username ?? 'Perfil',
+    );
     final startupError = context.select<FinanceProvider, String?>(
       (f) => f.initialized ? null : f.error,
     );
@@ -386,6 +389,24 @@ class _HomeScreenState extends State<HomeScreen>
                     AppStrings.appSubtitle,
                     style: TextStyle(fontSize: 14, color: AppColors.subtitle),
                   ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Text(
+                      'Perfil: $activeProfileName',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -424,7 +445,8 @@ class _HomeScreenState extends State<HomeScreen>
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 8),
                   color: AppColors.trialBannerBg,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
                     children: [
                       Expanded(
