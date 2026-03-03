@@ -186,3 +186,7 @@ class AppLicense {
   static const trialExpenseLimit = 15;
   static const trialReminderInterval = 3;
 }
+
+class AppProfiles {
+  static const sessionHours = 3;
+}

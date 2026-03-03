@@ -69,6 +69,18 @@ class DatabaseHelper {
 
   Future<void> _ensureSchemaCompatibility(Database db) async {
     await db.execute(SqlTables.appSettings);
+    await db.execute(SqlTables.debts);
+    await db.execute(SqlTables.debtPayments);
+    await db.execute(SqlTables.personalDebts);
+    await db.execute(SqlTables.personalDebtPayments);
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_debts_user_active ON debts(user_id, is_active);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_debt_payments_debt_date ON debt_payments(debt_id, payment_date);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_personal_debts_user_paid ON personal_debts(user_id, is_paid);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_personal_debt_payments_debt_date ON personal_debt_payments(personal_debt_id, payment_date);');
 
     final userColumns = await db.rawQuery("PRAGMA table_info(users);");
     final names = userColumns

@@ -175,6 +175,68 @@ CREATE TABLE IF NOT EXISTS savings_goals (
 );
 ''';
 
+  static const debts = '''
+CREATE TABLE IF NOT EXISTS debts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    principal_amount REAL NOT NULL,
+    annual_rate REAL NOT NULL DEFAULT 0,
+    term_months INTEGER NOT NULL,
+    start_date DATE NOT NULL,
+    payment_day INTEGER NOT NULL,
+    monthly_payment REAL NOT NULL DEFAULT 0,
+    current_balance REAL NOT NULL DEFAULT 0,
+    is_active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+''';
+
+  static const debtPayments = '''
+CREATE TABLE IF NOT EXISTS debt_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    debt_id INTEGER NOT NULL,
+    payment_date DATE NOT NULL,
+    total_amount REAL NOT NULL,
+    interest_amount REAL NOT NULL DEFAULT 0,
+    capital_amount REAL NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (debt_id) REFERENCES debts(id) ON DELETE CASCADE
+);
+''';
+
+  static const personalDebts = '''
+CREATE TABLE IF NOT EXISTS personal_debts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    person TEXT NOT NULL,
+    total_amount REAL NOT NULL,
+    current_balance REAL NOT NULL,
+    description TEXT,
+    date DATE NOT NULL,
+    is_paid BOOLEAN DEFAULT 0,
+    paid_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+''';
+
+  static const personalDebtPayments = '''
+CREATE TABLE IF NOT EXISTS personal_debt_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    personal_debt_id INTEGER NOT NULL,
+    payment_date DATE NOT NULL,
+    amount REAL NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (personal_debt_id) REFERENCES personal_debts(id) ON DELETE CASCADE
+);
+''';
+
   static const userSalary = '''
 CREATE TABLE IF NOT EXISTS user_salary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -241,6 +303,10 @@ CREATE TABLE IF NOT EXISTS custom_quincena (
     'CREATE INDEX IF NOT EXISTS idx_expenses_user_cycle ON expenses(user_id, quincenal_cycle);',
     'CREATE INDEX IF NOT EXISTS idx_fixed_payment_records_lookup ON fixed_payment_records(fixed_payment_id, year, month);',
     'CREATE INDEX IF NOT EXISTS idx_savings_user_period ON savings(user_id, year, month, quincenal_cycle);',
+    'CREATE INDEX IF NOT EXISTS idx_debts_user_active ON debts(user_id, is_active);',
+    'CREATE INDEX IF NOT EXISTS idx_debt_payments_debt_date ON debt_payments(debt_id, payment_date);',
+    'CREATE INDEX IF NOT EXISTS idx_personal_debts_user_paid ON personal_debts(user_id, is_paid);',
+    'CREATE INDEX IF NOT EXISTS idx_personal_debt_payments_debt_date ON personal_debt_payments(personal_debt_id, payment_date);',
   ];
 
   static const createStatements = <String>[
@@ -257,6 +323,10 @@ CREATE TABLE IF NOT EXISTS custom_quincena (
     backups,
     loans,
     savingsGoals,
+    debts,
+    debtPayments,
+    personalDebts,
+    personalDebtPayments,
     userSalary,
     salaryOverrides,
     userPeriodMode,

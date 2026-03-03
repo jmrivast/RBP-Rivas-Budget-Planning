@@ -7,7 +7,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../data/models/dashboard_data.dart';
+import '../data/models/debt.dart';
 import '../data/models/loan.dart';
+import '../data/models/personal_debt.dart';
 
 class PdfService {
   PdfService({
@@ -24,6 +26,8 @@ class PdfService {
   Future<String> generateDashboardReport({
     required DashboardData dashboard,
     required List<Loan> loans,
+    required List<Debt> debts,
+    required List<PersonalDebt> personalDebts,
     required String periodLabel,
   }) async {
     final reportsDir = await _ensureReportsDir();
@@ -35,11 +39,17 @@ class PdfService {
 
     final logo = await _loadLogo();
     final pendingLoans = loans.where((loan) => !loan.isPaidBool).toList();
+    final activeDebts = debts.where((d) => d.isActiveBool).toList();
     final totalExpenses = dashboard.totalExpensesSalary;
     final totalFixed = dashboard.totalFixed;
     final totalLoans = pendingLoans
         .where(_loanAffectsBudget)
         .fold<double>(0, (sum, loan) => sum + loan.amount);
+    final totalDebtInstallments =
+        activeDebts.fold<double>(0, (sum, debt) => sum + debt.monthlyPayment);
+    final pendingPersonalDebts = personalDebts.where((d) => !d.isPaidBool).toList();
+    final totalPersonalDebtPending =
+        pendingPersonalDebts.fold<double>(0, (sum, d) => sum + d.currentBalance);
     final dineroInicial = dashboard.dineroInicial;
     final dineroDisponible = dashboard.dineroDisponible;
 
@@ -95,6 +105,8 @@ class PdfService {
                   ('Total gastos:', _currency(totalExpenses), false),
                   ('Pagos fijos:', _currency(totalFixed), false),
                   ('Prestamos pend.:', _currency(totalLoans), false),
+                  ('Cuotas deudas:', _currency(totalDebtInstallments), false),
+                  ('Deudas personales:', _currency(totalPersonalDebtPending), false),
                   ('Dinero disponible:', _currency(dineroDisponible), true),
                 ]),
                 pw.SizedBox(height: 3 * _mm),
@@ -151,6 +163,39 @@ class PdfService {
                         _clip(loan.person, 25),
                         _clip((loan.description ?? '').trim(), 30),
                         _currency(loan.amount),
+                      ];
+                    }).toList(),
+                    rightAlignCols: const {2},
+                  ),
+                ],
+                if (activeDebts.isNotEmpty) ...[
+                  pw.SizedBox(height: 3 * _mm),
+                  _sectionTitle('Deudas Bancarias'),
+                  _table(
+                    headers: const ['Entidad', 'Balance', 'Cuota', 'Tasa'],
+                    widthsMm: const [62, 36, 36, 20],
+                    rows: activeDebts.map((debt) {
+                      return [
+                        _clip(debt.name, 35),
+                        _currency(debt.currentBalance),
+                        _currency(debt.monthlyPayment),
+                        '${debt.annualRate.toStringAsFixed(2)}%',
+                      ];
+                    }).toList(),
+                    rightAlignCols: const {1, 2, 3},
+                  ),
+                ],
+                if (pendingPersonalDebts.isNotEmpty) ...[
+                  pw.SizedBox(height: 3 * _mm),
+                  _sectionTitle('Deudas Personales'),
+                  _table(
+                    headers: const ['Persona', 'Descripcion', 'Balance'],
+                    widthsMm: const [48, 58, 34],
+                    rows: pendingPersonalDebts.map((debt) {
+                      return [
+                        _clip(debt.person, 25),
+                        _clip((debt.description ?? '').trim(), 30),
+                        _currency(debt.currentBalance),
                       ];
                     }).toList(),
                     rightAlignCols: const {2},

@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart';
 
@@ -8,15 +9,21 @@ import '../data/database/database_helper.dart';
 import '../data/models/category.dart';
 import '../data/models/custom_quincena.dart';
 import '../data/models/dashboard_data.dart';
+import '../data/models/debt.dart';
+import '../data/models/debt_payment.dart';
 import '../data/models/extra_income.dart';
 import '../data/models/loan.dart';
+import '../data/models/personal_debt.dart';
+import '../data/models/personal_debt_payment.dart';
 import '../data/models/savings_goal.dart';
 import '../data/models/user.dart';
 import '../data/repositories/category_repository.dart';
+import '../data/repositories/debt_repository.dart';
 import '../data/repositories/expense_repository.dart';
 import '../data/repositories/fixed_payment_repository.dart';
 import '../data/repositories/income_repository.dart';
 import '../data/repositories/loan_repository.dart';
+import '../data/repositories/personal_debt_repository.dart';
 import '../data/repositories/savings_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/user_repository.dart';
@@ -32,6 +39,8 @@ class FinanceService {
     ExpenseRepository? expenseRepo,
     FixedPaymentRepository? fixedPaymentRepo,
     LoanRepository? loanRepo,
+    PersonalDebtRepository? personalDebtRepo,
+    DebtRepository? debtRepo,
     IncomeRepository? incomeRepo,
     SavingsRepository? savingsRepo,
     SettingsRepository? settingsRepo,
@@ -43,6 +52,9 @@ class FinanceService {
         fixedPaymentRepo =
             fixedPaymentRepo ?? FixedPaymentRepository(dbHelper: db),
         loanRepo = loanRepo ?? LoanRepository(dbHelper: db),
+        personalDebtRepo =
+            personalDebtRepo ?? PersonalDebtRepository(dbHelper: db),
+        debtRepo = debtRepo ?? DebtRepository(dbHelper: db),
         incomeRepo = incomeRepo ?? IncomeRepository(dbHelper: db),
         savingsRepo = savingsRepo ?? SavingsRepository(dbHelper: db),
         settingsRepo = settingsRepo ?? SettingsRepository(dbHelper: db),
@@ -55,6 +67,8 @@ class FinanceService {
   final ExpenseRepository expenseRepo;
   final FixedPaymentRepository fixedPaymentRepo;
   final LoanRepository loanRepo;
+  final PersonalDebtRepository personalDebtRepo;
+  final DebtRepository debtRepo;
   final IncomeRepository incomeRepo;
   final SavingsRepository savingsRepo;
   final SettingsRepository settingsRepo;
@@ -62,6 +76,9 @@ class FinanceService {
   final PdfService pdfService;
 
   static const String _activeProfileKey = 'active_profile_id';
+  static const String _profileSessionUserIdKey = 'profile_session_user_id';
+  static const String _profileSessionExpiresAtKey =
+      'profile_session_expires_at';
 
   int? userId;
   bool _initialized = false;
@@ -299,6 +316,59 @@ class FinanceService {
       }
     }
     await userRepo.softDelete(profileId);
+  }
+
+  Future<bool> shouldPromptProfileAccess({int sessionHours = 3}) async {
+    await _ensureInit();
+    final profiles = await userRepo.getAllActive();
+    if (profiles.isEmpty) {
+      return false;
+    }
+    if (profiles.length == 1) {
+      // One profile without PIN: no prompt screen.
+      return profiles.first.hasPin;
+    }
+
+    final active = await getActiveProfile();
+    if (active?.id == null) {
+      return true;
+    }
+
+    final savedSessionUser = await settingsRepo.getAppSetting(
+      _profileSessionUserIdKey,
+      defaultValue: '',
+    );
+    final savedSessionUserId = int.tryParse(savedSessionUser.trim());
+    if (savedSessionUserId == null || savedSessionUserId != active!.id) {
+      return true;
+    }
+
+    final expiresRaw = await settingsRepo.getAppSetting(
+      _profileSessionExpiresAtKey,
+      defaultValue: '',
+    );
+    final expiresAt = DateTime.tryParse(expiresRaw)?.toUtc();
+    if (expiresAt == null) {
+      return true;
+    }
+
+    final nowUtc = DateTime.now().toUtc();
+    return !nowUtc.isBefore(expiresAt);
+  }
+
+  Future<void> markProfileSession({int sessionHours = 3}) async {
+    await _ensureInit();
+    final uid = userId;
+    if (uid == null) {
+      return;
+    }
+    final hours = sessionHours <= 0 ? 1 : sessionHours;
+    final expiresAt = DateTime.now().toUtc().add(Duration(hours: hours));
+    await settingsRepo.setAppSetting(_profileSessionUserIdKey, '$uid');
+    await settingsRepo.setAppSetting(
+      _profileSessionExpiresAtKey,
+      expiresAt.toIso8601String(),
+    );
   }
 
   int _readInt(String value, int fallback) {
@@ -780,6 +850,268 @@ class FinanceService {
     );
   }
 
+  double calculateDebtMonthlyPayment(
+    double principal,
+    double annualRate,
+    int termMonths,
+  ) {
+    final p = principal <= 0 ? 0.0 : principal;
+    final n = termMonths <= 0 ? 1 : termMonths;
+    final r = (annualRate <= 0 ? 0.0 : annualRate) / 100 / 12;
+    if (p == 0) {
+      return 0;
+    }
+    if (r == 0) {
+      return p / n;
+    }
+    final denom = 1 - math.pow(1 + r, -n);
+    if (denom == 0) {
+      return p / n;
+    }
+    return p * r / denom;
+  }
+
+  Future<void> addDebt({
+    required String name,
+    required double principalAmount,
+    required double annualRate,
+    required int termMonths,
+    required String startDate,
+    required int paymentDay,
+  }) async {
+    await _ensureInit();
+    final monthlyPayment =
+        calculateDebtMonthlyPayment(principalAmount, annualRate, termMonths);
+    await debtRepo.createDebt(
+      userId: userId!,
+      name: name.trim(),
+      principalAmount: principalAmount,
+      annualRate: annualRate,
+      termMonths: termMonths,
+      startDate: startDate,
+      paymentDay: paymentDay,
+      monthlyPayment: monthlyPayment,
+    );
+  }
+
+  Future<List<Debt>> getDebts({bool includeClosed = true}) async {
+    await _ensureInit();
+    return debtRepo.getDebtsByUser(userId!, includeClosed: includeClosed);
+  }
+
+  Future<void> deleteDebt(int debtId) async {
+    await _ensureInit();
+    final debt = await debtRepo.getDebtById(debtId);
+    if (debt == null || debt.userId != userId) {
+      throw Exception('Deuda no encontrada.');
+    }
+    await debtRepo.deleteDebt(debtId);
+  }
+
+  Future<void> updateDebt({
+    required int debtId,
+    required String name,
+    required double annualRate,
+    required int termMonths,
+    required int paymentDay,
+  }) async {
+    await _ensureInit();
+    final debt = await debtRepo.getDebtById(debtId);
+    if (debt == null || debt.userId != userId) {
+      throw Exception('Deuda no encontrada.');
+    }
+    if (name.trim().isEmpty) {
+      throw Exception('Nombre requerido.');
+    }
+    if (annualRate < 0 || termMonths <= 0 || paymentDay < 1 || paymentDay > 31) {
+      throw Exception('Datos de deuda invalidos.');
+    }
+
+    final paymentCount = await debtRepo.countDebtPayments(debtId);
+    final remainingMonths = math.max(1, termMonths - paymentCount).toInt();
+    final recalculatedMonthly = debt.currentBalance <= 0
+        ? 0.0
+        : calculateDebtMonthlyPayment(debt.currentBalance, annualRate, remainingMonths);
+
+    await debtRepo.updateDebt(
+      debtId,
+      name: name.trim(),
+      annualRate: annualRate,
+      termMonths: termMonths,
+      paymentDay: paymentDay,
+      monthlyPayment: recalculatedMonthly,
+      isActive: debt.currentBalance > 0 ? 1 : 0,
+    );
+  }
+
+  Future<void> addPersonalDebt(
+    String person,
+    double amount,
+    String description,
+    String dateText,
+  ) async {
+    await _ensureInit();
+    await personalDebtRepo.create(
+      userId: userId!,
+      person: person.trim(),
+      totalAmount: amount,
+      currentBalance: amount,
+      description: description.trim(),
+      date: dateText,
+    );
+  }
+
+  Future<List<PersonalDebt>> getPersonalDebts({bool includePaid = true}) async {
+    await _ensureInit();
+    return personalDebtRepo.getByUser(userId!, includePaid: includePaid);
+  }
+
+  Future<void> updatePersonalDebt(
+    int debtId, {
+    String? person,
+    double? totalAmount,
+    String? description,
+  }) async {
+    await _ensureInit();
+    final current = await personalDebtRepo.getById(debtId);
+    if (current == null || current.userId != userId) {
+      throw Exception('Deuda personal no encontrada.');
+    }
+    final newTotal = totalAmount ?? current.totalAmount;
+    final alreadyPaid = current.totalAmount - current.currentBalance;
+    if (newTotal < alreadyPaid) {
+      throw Exception('El total no puede ser menor a lo ya pagado.');
+    }
+    final newBalance = (newTotal - alreadyPaid).clamp(0.0, double.infinity).toDouble();
+    final paid = newBalance <= 0;
+    await personalDebtRepo.update(
+      debtId,
+      person: person?.trim(),
+      totalAmount: newTotal,
+      currentBalance: newBalance,
+      description: description?.trim(),
+      isPaid: paid ? 1 : 0,
+      paidDate: paid ? _dateIso(DateTime.now()) : null,
+    );
+  }
+
+  Future<void> deletePersonalDebt(int debtId) async {
+    await _ensureInit();
+    final current = await personalDebtRepo.getById(debtId);
+    if (current == null || current.userId != userId) {
+      throw Exception('Deuda personal no encontrada.');
+    }
+    await personalDebtRepo.delete(debtId);
+  }
+
+  Future<void> registerPersonalDebtPayment({
+    required int debtId,
+    required double amount,
+    required String paymentDate,
+    String? notes,
+  }) async {
+    await _ensureInit();
+    final current = await personalDebtRepo.getById(debtId);
+    if (current == null || current.userId != userId) {
+      throw Exception('Deuda personal no encontrada.');
+    }
+    if (amount <= 0) {
+      throw Exception('Monto invalido.');
+    }
+    final applied = amount > current.currentBalance ? current.currentBalance : amount;
+    final newBalance =
+        (current.currentBalance - applied).clamp(0.0, double.infinity).toDouble();
+
+    await personalDebtRepo.addPayment(
+      personalDebtId: debtId,
+      paymentDate: paymentDate,
+      amount: applied,
+      notes: notes?.trim().isEmpty == true ? null : notes?.trim(),
+    );
+    await personalDebtRepo.update(
+      debtId,
+      currentBalance: newBalance,
+      isPaid: newBalance <= 0 ? 1 : 0,
+      paidDate: newBalance <= 0 ? paymentDate : null,
+    );
+  }
+
+  Future<List<PersonalDebtPayment>> getPersonalDebtPayments(int debtId) async {
+    await _ensureInit();
+    final current = await personalDebtRepo.getById(debtId);
+    if (current == null || current.userId != userId) {
+      throw Exception('Deuda personal no encontrada.');
+    }
+    return personalDebtRepo.getPayments(debtId);
+  }
+
+  Future<double> getTotalOutstandingPersonalDebts() async {
+    await _ensureInit();
+    return personalDebtRepo.getTotalOutstanding(userId!);
+  }
+
+  Future<List<DebtPayment>> getDebtPayments(int debtId) async {
+    await _ensureInit();
+    final debt = await debtRepo.getDebtById(debtId);
+    if (debt == null || debt.userId != userId) {
+      throw Exception('Deuda no encontrada.');
+    }
+    return debtRepo.getDebtPayments(debtId);
+  }
+
+  Future<void> registerDebtPayment({
+    required int debtId,
+    required String paymentDate,
+    required double totalAmount,
+    required double interestAmount,
+    required double capitalAmount,
+    String? notes,
+  }) async {
+    await _ensureInit();
+    final debt = await debtRepo.getDebtById(debtId);
+    if (debt == null || debt.userId != userId) {
+      throw Exception('Deuda no encontrada.');
+    }
+    if (totalAmount <= 0) {
+      throw Exception('Monto de pago invalido.');
+    }
+    if (interestAmount < 0 || capitalAmount < 0) {
+      throw Exception('Interes/capital invalidos.');
+    }
+    if ((interestAmount + capitalAmount) > (totalAmount + 0.001)) {
+      throw Exception('Interes + capital no puede exceder el pago total.');
+    }
+
+    final remainingBefore = debt.currentBalance < 0 ? 0.0 : debt.currentBalance;
+    final appliedCapital = capitalAmount > remainingBefore
+        ? remainingBefore
+        : capitalAmount;
+    final newBalance =
+        (remainingBefore - appliedCapital).clamp(0.0, double.infinity).toDouble();
+
+    await debtRepo.createDebtPayment(
+      debtId: debtId,
+      paymentDate: paymentDate,
+      totalAmount: totalAmount,
+      interestAmount: interestAmount,
+      capitalAmount: appliedCapital,
+      notes: notes?.trim().isEmpty == true ? null : notes?.trim(),
+    );
+
+    final paymentCount = await debtRepo.countDebtPayments(debtId);
+    final remainingMonths = math.max(1, debt.termMonths - paymentCount).toInt();
+    final recalculatedMonthly = newBalance <= 0
+        ? 0.0
+        : calculateDebtMonthlyPayment(newBalance, debt.annualRate, remainingMonths);
+
+    await debtRepo.updateDebt(
+      debtId,
+      currentBalance: newBalance,
+      monthlyPayment: recalculatedMonthly,
+      isActive: newBalance > 0 ? 1 : 0,
+    );
+  }
+
   Future<void> updateIncome(
       int incomeId, double amount, String description, String dateText) async {
     await _ensureInit();
@@ -971,6 +1303,8 @@ class FinanceService {
     await _ensureInit();
     final data = await getDashboardData(year: year, month: month, cycle: cycle);
     final loans = await getLoans(includePaid: true);
+    final debts = await getDebts(includeClosed: false);
+    final personalDebts = await getPersonalDebts(includePaid: true);
     final periodLabel = dh.formatPeriodLabel(
       year: data.year,
       month: data.month,
@@ -982,6 +1316,8 @@ class FinanceService {
     return pdfService.generateDashboardReport(
       dashboard: data,
       loans: loans,
+      debts: debts,
+      personalDebts: personalDebts,
       periodLabel: periodLabel,
     );
   }

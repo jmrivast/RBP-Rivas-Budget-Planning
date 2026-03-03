@@ -188,8 +188,17 @@ class _HomeScreenState extends State<HomeScreen>
                 defaultValue: 'false'))
             .toLowerCase() ==
         'true';
+    final promptHandledKey = await finance.getSetting(
+      'last_period_close_prompt_key',
+      defaultValue: '',
+    );
     final lastKey =
         await finance.getSetting('last_auto_export_key', defaultValue: '');
+
+    // Ya se atendio este cierre de periodo (exportado o descartado manualmente).
+    if (promptHandledKey == exportKey) {
+      return;
+    }
 
     final periodRange =
         await finance.getPeriodRangeFor(prevYear, prevMonth, prevCycle);
@@ -209,11 +218,19 @@ class _HomeScreenState extends State<HomeScreen>
         final csvPath =
             await finance.exportCsvForPeriod(prevYear, prevMonth, prevCycle);
         await finance.setSetting('last_auto_export_key', exportKey);
+        await finance.setSetting('last_period_close_prompt_key', exportKey);
         _showSnack(
             'Exportacion automatica completada: ${p.basename(pdfPath)} y ${p.basename(csvPath)}');
       } catch (e) {
         _showSnack('Fallo la exportacion automatica del periodo cerrado: $e');
       }
+      return;
+    }
+
+    // Si ya hubo exportacion automatica de esta clave en una ejecucion previa,
+    // no volver a preguntar.
+    if (lastKey == exportKey) {
+      await finance.setSetting('last_period_close_prompt_key', exportKey);
       return;
     }
 
@@ -229,7 +246,15 @@ class _HomeScreenState extends State<HomeScreen>
               'Periodo anterior ($periodLabel) termino.\nDeseas generar el reporte PDF?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () async {
+                await finance.setSetting(
+                  'last_period_close_prompt_key',
+                  exportKey,
+                );
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
               child: const Text('No'),
             ),
             FilledButton.icon(
@@ -237,6 +262,10 @@ class _HomeScreenState extends State<HomeScreen>
                 try {
                   final path = await finance.exportPdfForPeriod(
                       prevYear, prevMonth, prevCycle);
+                  await finance.setSetting(
+                    'last_period_close_prompt_key',
+                    exportKey,
+                  );
                   if (context.mounted) {
                     Navigator.of(context).pop();
                   }

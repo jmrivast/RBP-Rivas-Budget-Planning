@@ -5,9 +5,13 @@ import '../data/database/database_helper.dart';
 import '../data/models/category.dart';
 import '../data/models/custom_quincena.dart';
 import '../data/models/dashboard_data.dart';
+import '../data/models/debt.dart';
+import '../data/models/debt_payment.dart';
 import '../data/models/expense.dart';
 import '../data/models/extra_income.dart';
 import '../data/models/loan.dart';
+import '../data/models/personal_debt.dart';
+import '../data/models/personal_debt_payment.dart';
 import '../data/models/savings_goal.dart';
 import '../data/models/user.dart';
 import '../services/finance_service.dart';
@@ -34,6 +38,8 @@ class FinanceProvider extends ChangeNotifier {
   List<Category> _categories = const [];
   List<ExtraIncome> _incomes = const [];
   List<Loan> _loans = const [];
+  List<PersonalDebt> _personalDebts = const [];
+  List<Debt> _debts = const [];
   List<SavingsGoal> _goals = const [];
   List<Expense> _expenses = const [];
   List<User> _profiles = const [];
@@ -52,6 +58,8 @@ class FinanceProvider extends ChangeNotifier {
   List<Category> get categories => _categories;
   List<ExtraIncome> get incomes => _incomes;
   List<Loan> get loans => _loans;
+  List<PersonalDebt> get personalDebts => _personalDebts;
+  List<Debt> get debts => _debts;
   List<SavingsGoal> get goals => _goals;
   List<Expense> get expenses => _expenses;
   List<User> get profiles => _profiles;
@@ -97,6 +105,8 @@ class FinanceProvider extends ChangeNotifier {
       loadCategories(),
       loadIncomes(),
       loadLoans(),
+      loadPersonalDebts(),
+      loadDebts(),
       loadGoals(),
     ]);
     _expenses = _dashboard?.rawExpenses ?? const [];
@@ -123,6 +133,14 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> loadLoans() async {
     _loans = await _service.getLoans(includePaid: true);
+  }
+
+  Future<void> loadPersonalDebts() async {
+    _personalDebts = await _service.getPersonalDebts(includePaid: true);
+  }
+
+  Future<void> loadDebts() async {
+    _debts = await _service.getDebts(includeClosed: true);
   }
 
   Future<void> loadGoals() async {
@@ -159,6 +177,7 @@ class FinanceProvider extends ChangeNotifier {
   }) async {
     await _withMutation(() async {
       await _service.switchProfile(profileId, pin: pin);
+      await _service.markProfileSession(sessionHours: AppProfiles.sessionHours);
       final now = DateTime.now();
       _year = now.year;
       _month = now.month;
@@ -199,6 +218,14 @@ class FinanceProvider extends ChangeNotifier {
       await _service.deleteProfile(profileId, pin: pin);
       await loadProfiles();
     }, refresh: () async {});
+  }
+
+  Future<bool> shouldPromptProfileAccess({int sessionHours = 3}) {
+    return _service.shouldPromptProfileAccess(sessionHours: sessionHours);
+  }
+
+  Future<void> markProfileSession({int sessionHours = 3}) {
+    return _service.markProfileSession(sessionHours: sessionHours);
   }
 
   Future<void> goToPreviousPeriod() async {
@@ -436,6 +463,127 @@ class FinanceProvider extends ChangeNotifier {
     }, refresh: _refreshDashboardAndLoans);
   }
 
+  Future<void> addPersonalDebt(
+    String person,
+    double amount,
+    String description,
+    String date,
+  ) async {
+    await _withMutation(() async {
+      await _service.addPersonalDebt(person, amount, description, date);
+    }, refresh: _refreshDashboardAndPersonalDebts);
+  }
+
+  Future<void> updatePersonalDebt(
+    int debtId, {
+    String? person,
+    double? totalAmount,
+    String? description,
+  }) async {
+    await _withMutation(() async {
+      await _service.updatePersonalDebt(
+        debtId,
+        person: person,
+        totalAmount: totalAmount,
+        description: description,
+      );
+    }, refresh: _refreshDashboardAndPersonalDebts);
+  }
+
+  Future<void> deletePersonalDebt(int debtId) async {
+    await _withMutation(() async {
+      await _service.deletePersonalDebt(debtId);
+    }, refresh: _refreshDashboardAndPersonalDebts);
+  }
+
+  Future<void> registerPersonalDebtPayment({
+    required int debtId,
+    required double amount,
+    required String paymentDate,
+    String? notes,
+  }) async {
+    await _withMutation(() async {
+      await _service.registerPersonalDebtPayment(
+        debtId: debtId,
+        amount: amount,
+        paymentDate: paymentDate,
+        notes: notes,
+      );
+    }, refresh: _refreshDashboardAndPersonalDebts);
+  }
+
+  Future<List<PersonalDebtPayment>> getPersonalDebtPayments(int debtId) {
+    return _service.getPersonalDebtPayments(debtId);
+  }
+
+  Future<void> addDebt({
+    required String name,
+    required double principalAmount,
+    required double annualRate,
+    required int termMonths,
+    required String startDate,
+    required int paymentDay,
+  }) async {
+    await _withMutation(() async {
+      await _service.addDebt(
+        name: name,
+        principalAmount: principalAmount,
+        annualRate: annualRate,
+        termMonths: termMonths,
+        startDate: startDate,
+        paymentDay: paymentDay,
+      );
+    }, refresh: _refreshDashboardAndDebts);
+  }
+
+  Future<void> deleteDebt(int debtId) async {
+    await _withMutation(() async {
+      await _service.deleteDebt(debtId);
+    }, refresh: _refreshDashboardAndDebts);
+  }
+
+  Future<void> updateDebt({
+    required int debtId,
+    required String name,
+    required double annualRate,
+    required int termMonths,
+    required int paymentDay,
+  }) async {
+    await _withMutation(() async {
+      await _service.updateDebt(
+        debtId: debtId,
+        name: name,
+        annualRate: annualRate,
+        termMonths: termMonths,
+        paymentDay: paymentDay,
+      );
+    }, refresh: _refreshDashboardAndDebts);
+  }
+
+  Future<List<DebtPayment>> getDebtPayments(int debtId) {
+    return _service.getDebtPayments(debtId);
+  }
+
+  Future<void> registerDebtPayment({
+    required int debtId,
+    required String paymentDate,
+    required double totalAmount,
+    required double interestAmount,
+    required double capitalAmount,
+    String? notes,
+  }) async {
+    await _withMutation(() async {
+      await _service.registerDebtPayment(
+        debtId: debtId,
+        paymentDate: paymentDate,
+        totalAmount: totalAmount,
+        interestAmount: interestAmount,
+        capitalAmount: capitalAmount,
+        notes: notes,
+      );
+    }, refresh: _refreshDashboardAndDebts);
+  }
+
   Future<void> addSavings(double amount) async {
     await _withMutation(() async {
       await _service.addSavings(amount);
@@ -668,6 +816,16 @@ class FinanceProvider extends ChangeNotifier {
   Future<void> _refreshDashboardAndLoans() async {
     await _refreshDashboardOnly();
     await loadLoans();
+  }
+
+  Future<void> _refreshDashboardAndDebts() async {
+    await _refreshDashboardOnly();
+    await loadDebts();
+  }
+
+  Future<void> _refreshDashboardAndPersonalDebts() async {
+    await _refreshDashboardOnly();
+    await loadPersonalDebts();
   }
 
   Future<void> _refreshDashboardAndGoals() async {

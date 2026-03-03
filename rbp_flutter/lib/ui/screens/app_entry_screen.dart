@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/constants.dart';
 import '../../config/platform_config.dart';
 import '../../providers/finance_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/license_service.dart';
 import 'activation_screen.dart';
 import 'home_screen.dart';
+import 'profile_access_screen.dart';
 
 class AppEntryScreen extends StatefulWidget {
   const AppEntryScreen({super.key});
@@ -19,6 +21,7 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
   final _licenseService = LicenseService();
   bool _loading = true;
   bool _needsActivation = false;
+  bool _needsProfileAccess = false;
   String? _error;
 
   @override
@@ -37,24 +40,52 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
       await settings.loadThemePreset();
       if (!PlatformConfig.supportsLicense) {
         finance.setLicenseState(activated: true, trialMode: false);
+        final needsProfile = await finance.shouldPromptProfileAccess(
+          sessionHours: AppProfiles.sessionHours,
+        );
+        if (!needsProfile) {
+          await finance.markProfileSession(
+              sessionHours: AppProfiles.sessionHours);
+        }
         if (!mounted) {
           return;
         }
         setState(() {
           _loading = false;
           _needsActivation = false;
+          _needsProfileAccess = needsProfile;
         });
         return;
       }
 
       final activated = await _licenseService.isActivated();
       finance.setLicenseState(activated: activated, trialMode: !activated);
+      if (!activated) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _loading = false;
+          _needsActivation = true;
+          _needsProfileAccess = false;
+        });
+        return;
+      }
+
+      final needsProfile = await finance.shouldPromptProfileAccess(
+        sessionHours: AppProfiles.sessionHours,
+      );
+      if (!needsProfile) {
+        await finance.markProfileSession(
+            sessionHours: AppProfiles.sessionHours);
+      }
       if (!mounted) {
         return;
       }
       setState(() {
         _loading = false;
-        _needsActivation = !activated;
+        _needsActivation = false;
+        _needsProfileAccess = needsProfile;
       });
     } catch (e) {
       if (!mounted) {
@@ -70,17 +101,50 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
   void _onActivated() {
     final finance = context.read<FinanceProvider>();
     finance.setLicenseState(activated: true, trialMode: false);
-    setState(() {
-      _needsActivation = false;
-    });
+    _resolveProfileGateAfterActivation();
   }
 
   void _onContinueTrial() {
     final finance = context.read<FinanceProvider>();
     finance.setLicenseState(activated: false, trialMode: true);
+    _resolveProfileGateAfterActivation();
+  }
+
+  Future<void> _resolveProfileGateAfterActivation() async {
+    if (!mounted) {
+      return;
+    }
     setState(() {
+      _loading = true;
       _needsActivation = false;
+      _needsProfileAccess = false;
+      _error = null;
     });
+    try {
+      final finance = context.read<FinanceProvider>();
+      final needsProfile = await finance.shouldPromptProfileAccess(
+        sessionHours: AppProfiles.sessionHours,
+      );
+      if (!needsProfile) {
+        await finance.markProfileSession(
+            sessionHours: AppProfiles.sessionHours);
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _needsProfileAccess = needsProfile;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
   }
 
   @override
@@ -113,6 +177,20 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
         licenseService: _licenseService,
         onActivated: _onActivated,
         onContinueTrial: _onContinueTrial,
+      );
+    }
+
+    if (_needsProfileAccess) {
+      return ProfileAccessScreen(
+        sessionHours: AppProfiles.sessionHours,
+        onAuthenticated: () {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _needsProfileAccess = false;
+          });
+        },
       );
     }
 
