@@ -1,11 +1,13 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:rbp_flutter/data/models/dashboard_data.dart';
+import 'package:rbp_flutter/data/models/debt.dart';
 import 'package:rbp_flutter/data/models/expense.dart';
 import 'package:rbp_flutter/data/models/loan.dart';
+import 'package:rbp_flutter/data/models/personal_debt.dart';
 import 'package:rbp_flutter/services/csv_service.dart';
 import 'package:rbp_flutter/services/pdf_service.dart';
 
@@ -114,6 +116,8 @@ void main() {
     final output = await pdfService.generateDashboardReport(
       dashboard: dashboard,
       loans: loans,
+      debts: const <Debt>[],
+      personalDebts: const <PersonalDebt>[],
       periodLabel: '14-28 Feb 2026 (Q2)',
     );
 
@@ -123,3 +127,4 @@ void main() {
     expect(p.basename(output), 'reporte_2026_02_Q2.pdf');
   });
 }
+

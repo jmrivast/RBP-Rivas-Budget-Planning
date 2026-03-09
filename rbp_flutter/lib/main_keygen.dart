@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'ui/screens/keygen_tool_screen.dart';
+import 'presentation/screens/keygen_tool_screen.dart';
 
 void main() {
   runApp(const KeygenToolApp());

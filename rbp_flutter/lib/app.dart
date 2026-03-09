@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'config/constants.dart';
-import 'providers/finance_provider.dart';
-import 'providers/settings_provider.dart';
-import 'ui/screens/app_entry_screen.dart';
-import 'ui/theme/app_button_styles.dart';
+import 'presentation/providers/finance_provider.dart';
+import 'presentation/providers/settings_provider.dart';
+import 'presentation/screens/app_entry_screen.dart';
+import 'presentation/theme/app_button_styles.dart';
 
 class RbpApp extends StatelessWidget {
   const RbpApp({super.key});

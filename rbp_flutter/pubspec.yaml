@@ -30,6 +30,7 @@ dependencies:
   # License system
   device_info_plus: ^10.1.2
   crypto: ^3.0.5
+  cryptography: ^2.7.0
   universal_platform: ^1.1.0
   # Desktop
   window_manager: ^0.4.2
@@ -64,3 +65,4 @@ msix_config:
   identity_name: com.rivasbudget.rbp
   msix_version: 2.0.0.0
   logo_path: assets/icon.png
+

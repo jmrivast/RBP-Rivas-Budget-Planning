@@ -2,13 +2,19 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import 'license_crypto.dart';
+
 class LicenseKeyCodec {
   static const secretSalt = String.fromEnvironment(
     'RBP_LICENSE_SALT',
     defaultValue: 'RBP_SECRET_SALT_CHANGE_ME',
   );
 
-  static String generateLicenseKey(String machineId) {
+  static Future<String> generateLicenseKey(String machineId) {
+    return LicenseCrypto.generateLicenseToken(machineId);
+  }
+
+  static String generateLegacyLicenseKey(String machineId) {
     final normalizedMachine = normalizeMachineId(machineId);
     final input = '$normalizedMachine:$secretSalt';
     final hash = sha256.convert(utf8.encode(input)).toString().toUpperCase();
@@ -18,8 +24,8 @@ class LicenseKeyCodec {
 
   static bool looksLikeKey(String key) {
     final normalized = normalizeKey(key);
-    final re = RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
-    return re.hasMatch(normalized);
+    final legacy = RegExp(r'^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$');
+    return legacy.hasMatch(normalized) || LicenseCrypto.looksLikeV2Token(normalized);
   }
 
   static String normalizeMachineId(String machineId) {
@@ -27,6 +33,11 @@ class LicenseKeyCodec {
   }
 
   static String normalizeKey(String key) {
-    return key.trim().toUpperCase();
+    final trimmed = key.trim().toUpperCase();
+    final legacyRaw = trimmed.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (legacyRaw.length == 16) {
+      return '${legacyRaw.substring(0, 4)}-${legacyRaw.substring(4, 8)}-${legacyRaw.substring(8, 12)}-${legacyRaw.substring(12, 16)}';
+    }
+    return LicenseCrypto.normalizeToken(trimmed);
   }
 }

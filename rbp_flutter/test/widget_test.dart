@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
-import 'package:rbp_flutter/ui/widgets/stat_card.dart';
+import 'package:rbp_flutter/presentation/widgets/stat_card.dart';
 
 void main() {
   testWidgets('renders stat card values', (WidgetTester tester) async {

@@ -7,6 +7,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../config/platform_config.dart';
+import '../data/models/license_info.dart';
+import 'license_crypto.dart';
 import 'license_key_codec.dart';
 
 class LicenseService {
@@ -15,11 +17,10 @@ class LicenseService {
   }) : _documentsDirectoryProvider =
             documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
 
-  static const _licenseKeyField = 'license_key';
-  static const _activationDateField = 'activation_date';
-  static const _machineIdField = 'machine_id';
   static const _licenseFileName = 'license_info.json';
   final Future<Directory> Function() _documentsDirectoryProvider;
+
+  Future<bool> requiresActivation() async => PlatformConfig.supportsLicense;
 
   Future<String> getMachineId() async {
     String rawId = '';
@@ -43,7 +44,7 @@ class LicenseService {
     return digest.toString().substring(0, 16).toUpperCase();
   }
 
-  static String generateLicenseKey(String machineId) {
+  static Future<String> generateLicenseKey(String machineId) {
     return LicenseKeyCodec.generateLicenseKey(machineId);
   }
 
@@ -53,44 +54,60 @@ class LicenseService {
       return false;
     }
     final machineId = await getMachineId();
-    return normalized == generateLicenseKey(machineId);
+    final aesPayload = await LicenseCrypto.decryptLicenseToken(machineId, normalized);
+    if (aesPayload != null) {
+      return true;
+    }
+    final legacy = LicenseKeyCodec.generateLegacyLicenseKey(machineId);
+    return normalized == legacy;
   }
 
   Future<void> storeKey(String licenseKey) async {
-    final normalized = _normalizeKey(licenseKey);
+    final normalized = LicenseKeyCodec.normalizeKey(licenseKey);
+    final machineId = await getMachineId();
     final valid = await validateKey(normalized);
     if (!valid) {
       throw Exception('Clave invalida. Verifica e intenta de nuevo.');
     }
-    final machineId = await getMachineId();
-    final payload = <String, String>{
-      _licenseKeyField: normalized,
-      _activationDateField: DateTime.now().toIso8601String(),
-      _machineIdField: machineId,
+
+    final tokenPayload = await LicenseCrypto.decryptLicenseToken(machineId, normalized);
+    final scheme = switch (tokenPayload?.version) {
+      3 => 'aes-v3',
+      2 => 'aes-v2',
+      _ => 'legacy-v1',
     };
-    final file = await _licenseFile();
-    await file.parent.create(recursive: true);
-    await file.writeAsString(jsonEncode(payload), flush: true);
+    final info = LicenseInfo(
+      key: normalized,
+      keyPreview: _keyPreview(normalized),
+      machineId: machineId,
+      machineFingerprint: LicenseCrypto.machineFingerprint(machineId),
+      activatedAt: DateTime.now().toIso8601String(),
+      scheme: scheme,
+      isActivated: true,
+    );
+    await _writeEncryptedRecord(info);
   }
 
   Future<bool> isActivated() async {
-    if (!PlatformConfig.supportsLicense) {
+    if (!await requiresActivation()) {
       return true;
     }
-    final data = await _readStoredData();
-    final key = data[_licenseKeyField];
-    if (key == null || key.isEmpty) {
+    final info = await _readLicenseInfo();
+    if (info == null || !info.isActivated || info.key == null || info.key!.isEmpty) {
       return false;
     }
-    return validateKey(key);
+    return validateKey(info.key!);
   }
 
   Future<Map<String, String?>> getLicenseInfo() async {
-    final data = await _readStoredData();
+    final info = await _readLicenseInfo();
+    final machineId = await getMachineId();
     return {
-      'key': data[_licenseKeyField],
-      'activationDate': data[_activationDateField],
-      'machineId': await getMachineId(),
+      'key': info?.key,
+      'activationDate': info?.activatedAt,
+      'machineId': machineId,
+      'scheme': info?.scheme,
+      'keyPreview': info?.keyPreview,
     };
   }
 
@@ -106,28 +123,96 @@ class LicenseService {
     return File(p.join(docs.path, 'rbp', _licenseFileName));
   }
 
-  Future<Map<String, String>> _readStoredData() async {
+  Future<LicenseInfo?> _readLicenseInfo() async {
     try {
       final file = await _licenseFile();
       if (!await file.exists()) {
-        return const {};
+        return null;
       }
       final raw = (await file.readAsString()).trim();
       if (raw.isEmpty) {
-        return const {};
+        return null;
       }
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) {
-        return const {};
+        return null;
       }
-      return decoded.map(
-          (key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
+
+      final machineId = await getMachineId();
+      final encryptedRecord = decoded['record']?.toString();
+      if (encryptedRecord != null && encryptedRecord.isNotEmpty) {
+        final decrypted = await LicenseCrypto.decryptLocalRecord(
+          machineId: machineId,
+          token: encryptedRecord,
+        );
+        if (decrypted == null) {
+          return null;
+        }
+        return LicenseInfo.fromMap(decrypted);
+      }
+
+      return _tryMigrateLegacyFile(machineId, decoded);
     } catch (_) {
-      return const {};
+      return null;
     }
   }
 
-  static String _normalizeKey(String key) {
-    return LicenseKeyCodec.normalizeKey(key);
+  Future<LicenseInfo?> _tryMigrateLegacyFile(
+    String machineId,
+    Map<String, dynamic> decoded,
+  ) async {
+    final legacyKey = decoded['license_key']?.toString() ?? decoded['key']?.toString();
+    if (legacyKey == null || legacyKey.isEmpty) {
+      return null;
+    }
+
+    final normalized = LicenseKeyCodec.normalizeKey(legacyKey);
+    final tokenPayload = await LicenseCrypto.decryptLicenseToken(machineId, normalized);
+    final legacyInfo = LicenseInfo(
+      key: normalized,
+      keyPreview: _keyPreview(normalized),
+      machineId: machineId,
+      machineFingerprint: LicenseCrypto.machineFingerprint(machineId),
+      activatedAt: decoded['activation_date']?.toString() ??
+          decoded['activated_at']?.toString() ??
+          DateTime.now().toIso8601String(),
+      scheme: switch (tokenPayload?.version) {
+        3 => 'aes-v3',
+        2 => 'aes-v2',
+        _ => 'legacy-v1',
+      },
+      isActivated: true,
+    );
+
+    if (!await validateKey(normalized)) {
+      return null;
+    }
+
+    await _writeEncryptedRecord(legacyInfo);
+    return legacyInfo;
+  }
+
+  Future<void> _writeEncryptedRecord(LicenseInfo info) async {
+    final machineId = await getMachineId();
+    final encryptedRecord = await LicenseCrypto.encryptLocalRecord(
+      machineId: machineId,
+      payload: info.toMap(),
+    );
+    final wrapper = <String, Object?>{
+      'scheme': info.scheme,
+      'version': LicenseCrypto.currentVersion,
+      'record': encryptedRecord,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    final file = await _licenseFile();
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(wrapper), flush: true);
+  }
+
+  static String _keyPreview(String key) {
+    if (key.length <= 14) {
+      return key;
+    }
+    return '${key.substring(0, 9)}...${key.substring(key.length - 4)}';
   }
 }

@@ -19,10 +19,41 @@ build/
 dist/
 *.log
 
+# Pytest
+.pytest_cache/
+pytest-cache-files-*/
+.cache/
+
 # Local runtime data (keep user data out of git)
 data/finanzas.db
 backups/
 reportes/
+data/
+
+# Public portfolio cleanup: keep local-only/supporting work out of the repo view
+backend/
+gh_pages_repo/
+legacy/
+tests/
+installer/
+tools/stripe-cli/
+
+# Internal docs / ops notes kept local
+.env.example
+MIGRATION_PLAN.md
+COMANDOS_POSTVENTA.txt
+FEATURES_BACKLOG_V2.md
+FLUTTER_MIGRATION_PLAN.md
+OPERACION_COMERCIAL.md
+RELEASE_CHECKLIST_V2.md
+RELEASE_NOTES_2.0.0.md
+RELEASE_PUBLISH_CHECKLIST_2.0.0.md
+pytest.ini
+render.yaml
+
+# Local diagnostics
+uvicorn*.log
+rbp_flutter/build_web_*.log
 
 # Flutter generated/build (subproject)
 rbp_flutter/.dart_tool/
@@ -33,4 +64,3 @@ rbp_flutter/coverage/
 rbp_flutter/android/app/debug/
 rbp_flutter/android/app/profile/
 rbp_flutter/android/app/release/
-

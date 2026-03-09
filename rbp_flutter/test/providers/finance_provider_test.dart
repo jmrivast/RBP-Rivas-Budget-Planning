@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:rbp_flutter/data/database/database_helper.dart';
-import 'package:rbp_flutter/providers/finance_provider.dart';
+import 'package:rbp_flutter/presentation/providers/finance_provider.dart';
 import 'package:rbp_flutter/services/finance_service.dart';
 
 void main() {

@@ -1,9 +1,11 @@
 class LicenseService {
   LicenseService({Future<dynamic> Function()? documentsDirectoryProvider});
 
+  Future<bool> requiresActivation() async => false;
+
   Future<String> getMachineId() async => 'WEB-NO-LICENSE';
 
-  static String generateLicenseKey(String machineId) => 'N/A';
+  static Future<String> generateLicenseKey(String machineId) async => 'N/A';
 
   Future<bool> validateKey(String licenseKey) async => true;
 
@@ -16,6 +18,8 @@ class LicenseService {
       'key': null,
       'activationDate': null,
       'machineId': 'WEB-NO-LICENSE',
+      'scheme': 'stub',
+      'keyPreview': null,
     };
   }
 
