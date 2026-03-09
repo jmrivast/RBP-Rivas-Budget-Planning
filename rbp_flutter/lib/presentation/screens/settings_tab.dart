@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../../config/platform_config.dart';
@@ -8,7 +7,7 @@ import '../../config/constants.dart';
 import '../../data/models/user.dart';
 import '../providers/finance_provider.dart';
 import '../providers/settings_provider.dart';
-import '../../services/backup_service.dart';
+import '../../services/settings_actions_service.dart';
 import '../../services/update_service.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/rename_category_dialog.dart';
@@ -36,7 +35,7 @@ class _SettingsTabState extends State<SettingsTab> {
   final _newProfilePinCtrl = TextEditingController();
   final _newProfilePinConfirmCtrl = TextEditingController();
 
-  final _backupService = BackupService();
+  final _settingsActions = SettingsActionsService();
   final _updateService = UpdateService();
 
   String _periodMode = 'quincenal';
@@ -979,9 +978,9 @@ class _SettingsTabState extends State<SettingsTab> {
                               FilledButton.icon(
                                 onPressed: () async {
                                   try {
-                                    final path =
-                                        await _backupService.createBackup();
-                                    _show('Respaldo creado: ${p.basename(path)}');
+                                    final result =
+                                        await _settingsActions.createBackup();
+                                    _show(result.message);
                                   } catch (e) {
                                     _show('No se pudo crear respaldo: $e');
                                   }
@@ -992,14 +991,15 @@ class _SettingsTabState extends State<SettingsTab> {
                               OutlinedButton.icon(
                                 onPressed: () async {
                                   try {
-                                    final source = await _backupService
-                                        .pickAndRestoreBackup();
-                                    if (source == null) {
+                                    final result =
+                                        await _settingsActions.restoreBackup();
+                                    if (result == null) {
                                       return;
                                     }
-                                    await finance.refreshAll();
-                                    _show(
-                                        'Respaldo restaurado: ${p.basename(source)}');
+                                    if (result.requiresRefresh) {
+                                      await finance.refreshAll();
+                                    }
+                                    _show(result.message);
                                   } catch (e) {
                                     _show('No se pudo restaurar respaldo: $e');
                                   }
