@@ -10,4 +10,11 @@ class ExportDeliveryService {
   Future<bool> openFile(String filePath) async {
     return false;
   }
+
+  Future<String> deliverExportedFile(
+    String filePath, {
+    required String label,
+  }) async {
+    return '$label no esta disponible en esta plataforma.';
+  }
 }

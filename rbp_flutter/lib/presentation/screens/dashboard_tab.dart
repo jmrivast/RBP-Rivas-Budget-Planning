@@ -14,8 +14,6 @@ import 'package:rbp_flutter/presentation/widgets/pie_chart_widget.dart';
 import 'package:rbp_flutter/presentation/widgets/period_nav_bar.dart';
 import 'package:rbp_flutter/presentation/widgets/stat_card.dart';
 import 'package:rbp_flutter/utils/currency_formatter.dart';
-import 'package:path/path.dart' as p;
-import 'package:share_plus/share_plus.dart';
 
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
@@ -114,24 +112,8 @@ class DashboardTab extends StatelessWidget {
     if (!PlatformConfig.supportsPdfCsvExport) {
       return '$label no esta disponible en esta plataforma.';
     }
-
-    if (PlatformConfig.supportsExportOpen) {
-      final opened = await _exportDelivery.openFile(path);
-      return opened
-          ? '$label generado: ${p.basename(path)}'
-          : '$label generado: ${p.basename(path)} (no se pudo abrir automaticamente)';
-    }
-
-    if (PlatformConfig.supportsNativeShare) {
-      await Share.shareXFiles(
-        [XFile(path)],
-        text: '$label generado con RBP',
-      );
-    }
-
-    return '$label: ${p.basename(path)}';
+    return _exportDelivery.deliverExportedFile(path, label: label);
   }
-
   @override
   Widget build(BuildContext context) {
     final finance = context.read<FinanceProvider>();
@@ -296,3 +278,4 @@ class DashboardTab extends StatelessWidget {
     );
   }
 }
+
