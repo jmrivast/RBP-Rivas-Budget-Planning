@@ -1,4 +1,4 @@
-import 'license_service.dart';
+import 'app_access_service.dart';
 
 class ActivationMachineResult {
   const ActivationMachineResult({
@@ -22,16 +22,16 @@ class ActivationAttemptResult {
 
 class ActivationFlowService {
   ActivationFlowService({
-    LicenseService? licenseService,
-  }) : _licenseService = licenseService ?? LicenseService();
+    AppAccessService? accessService,
+  }) : _accessService = accessService ?? AppAccessService();
 
-  final LicenseService _licenseService;
+  final AppAccessService _accessService;
 
-  LicenseService get licenseService => _licenseService;
+  AppAccessService get accessService => _accessService;
 
   Future<ActivationMachineResult> loadMachineId() async {
     try {
-      final id = await _licenseService.getMachineId();
+      final id = await _accessService.getMachineId();
       return ActivationMachineResult(machineId: id);
     } catch (e) {
       return ActivationMachineResult(
@@ -50,7 +50,7 @@ class ActivationFlowService {
       );
     }
 
-    final ok = await _licenseService.validateKey(key);
+    final ok = await _accessService.validateLicenseKey(key);
     if (!ok) {
       return const ActivationAttemptResult(
         success: false,
@@ -58,7 +58,7 @@ class ActivationFlowService {
       );
     }
 
-    await _licenseService.storeKey(key);
+    await _accessService.storeLicenseKey(key);
     return const ActivationAttemptResult(success: true);
   }
 }

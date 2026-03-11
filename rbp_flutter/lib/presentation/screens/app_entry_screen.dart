@@ -141,7 +141,7 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
 
     if (_needsActivation) {
       return ActivationScreen(
-        licenseService: _appEntryService.licenseService,
+        licenseService: _appEntryService.accessService.licenseService,
         onActivated: _onActivated,
         onContinueTrial: _onContinueTrial,
       );

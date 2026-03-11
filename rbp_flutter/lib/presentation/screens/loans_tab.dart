@@ -90,7 +90,7 @@ class _LoansTabState extends State<LoansTab> {
   }
 
   Widget _sectionSelector() {
-    return SegmentedButton<_LoansSection>(
+    final selector = SegmentedButton<_LoansSection>(
       showSelectedIcon: false,
       segments: const [
         ButtonSegment(
@@ -116,6 +116,11 @@ class _LoansTabState extends State<LoansTab> {
         }
         setState(() => _section = selection.first);
       },
+    );
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: selector,
     );
   }
 

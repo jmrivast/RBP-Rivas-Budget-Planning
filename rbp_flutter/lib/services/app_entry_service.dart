@@ -1,7 +1,7 @@
 import '../config/constants.dart';
 import '../presentation/providers/finance_provider.dart';
 import '../presentation/providers/settings_provider.dart';
-import 'license_service.dart';
+import 'app_access_service.dart';
 
 class AppEntryResolution {
   const AppEntryResolution({
@@ -19,12 +19,12 @@ class AppEntryResolution {
 
 class AppEntryService {
   AppEntryService({
-    LicenseService? licenseService,
-  }) : _licenseService = licenseService ?? LicenseService();
+    AppAccessService? accessService,
+  }) : _accessService = accessService ?? AppAccessService();
 
-  final LicenseService _licenseService;
+  final AppAccessService _accessService;
 
-  LicenseService get licenseService => _licenseService;
+  AppAccessService get accessService => _accessService;
 
   Future<AppEntryResolution> resolveInitialEntry({
     required FinanceProvider finance,
@@ -33,24 +33,13 @@ class AppEntryService {
     await finance.init();
     await settings.loadThemePreset();
 
-    final requiresActivation = await _licenseService.requiresActivation();
-    if (!requiresActivation) {
-      final needsProfile = await _resolveProfileGate(finance);
+    final accessState = await _accessService.resolveAccessState();
+    if (accessState.needsActivation) {
       return AppEntryResolution(
-        needsActivation: false,
-        needsProfileAccess: needsProfile,
-        activated: true,
-        trialMode: false,
-      );
-    }
-
-    final activated = await _licenseService.isActivated();
-    if (!activated) {
-      return const AppEntryResolution(
         needsActivation: true,
         needsProfileAccess: false,
-        activated: false,
-        trialMode: true,
+        activated: accessState.activated,
+        trialMode: accessState.trialMode,
       );
     }
 
@@ -58,8 +47,8 @@ class AppEntryService {
     return AppEntryResolution(
       needsActivation: false,
       needsProfileAccess: needsProfile,
-      activated: true,
-      trialMode: false,
+      activated: accessState.activated,
+      trialMode: accessState.trialMode,
     );
   }
 

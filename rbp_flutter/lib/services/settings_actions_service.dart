@@ -1,7 +1,7 @@
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
-import '../config/platform_config.dart';
+import '../core/platform/app_capabilities.dart';
 import 'backup_service.dart';
 import 'update_service.dart';
 
@@ -74,7 +74,7 @@ class SettingsActionsService {
   Future<UpdateCheckResult> checkForUpdates({
     required bool includeBeta,
   }) async {
-    if (!PlatformConfig.supportsUpdateChecks) {
+    if (!AppCapabilities.current.supportsUpdateChecks) {
       return const UpdateCheckResult(
         status: UpdateCheckStatus.unsupported,
         message:

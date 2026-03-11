@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/platform_config.dart';
+import '../../core/platform/app_capabilities.dart';
 import '../../config/constants.dart';
 import '../../data/models/user.dart';
 import '../providers/finance_provider.dart';
@@ -402,13 +402,10 @@ class _SettingsTabState extends State<SettingsTab> {
     await finance.setSetting('quincenal_pay_day_1', '$q1');
     await finance.setSetting('quincenal_pay_day_2', '$q2');
     await finance.setSetting('monthly_pay_day', '$md');
-    await finance.setSetting('quincenal_pay_day_1', '$q1');
-    await finance.setSetting('quincenal_pay_day_2', '$q2');
-    await finance.setSetting('monthly_pay_day', '$md');
     final effectiveAutoExport =
-        PlatformConfig.supportsAutoPeriodExport ? _autoExport : false;
+        AppCapabilities.current.supportsAutoPeriodExport ? _autoExport : false;
     final effectiveIncludeBeta =
-        PlatformConfig.supportsUpdateChecks ? _includeBeta : false;
+        AppCapabilities.current.supportsUpdateChecks ? _includeBeta : false;
 
     await finance.setSetting(
         'auto_export_close_period', '$effectiveAutoExport');
@@ -615,7 +612,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                           WrapCrossAlignment.center,
                                       children: [
                                         SizedBox(
-                                          width: 240,
+                                          width: constraints.maxWidth < 720 ? double.infinity : 240,
                                           child: TextField(
                                             controller: _newProfileCtrl,
                                             decoration: const InputDecoration(
@@ -644,7 +641,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                           ),
                                         ),
                                         SizedBox(
-                                          width: 170,
+                                          width: constraints.maxWidth < 720 ? double.infinity : 170,
                                           child: TextField(
                                             controller: _newProfilePinCtrl,
                                             obscureText: true,
@@ -655,7 +652,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                           ),
                                         ),
                                         SizedBox(
-                                          width: 170,
+                                          width: constraints.maxWidth < 720 ? double.infinity : 170,
                                           child: TextField(
                                             controller:
                                                 _newProfilePinConfirmCtrl,
@@ -806,7 +803,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     SizedBox(
-                                      width: 280,
+                                      width: constraints.maxWidth < 720 ? double.infinity : 280,
                                       child: DropdownButtonFormField<String>(
                                         initialValue: _periodMode,
                                         items: const [
@@ -825,7 +822,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 240,
+                                      width: constraints.maxWidth < 720 ? double.infinity : 240,
                                       child: DropdownButtonFormField<String>(
                                         key: ValueKey(
                                             'theme-${settings.themePreset}'),
@@ -854,9 +851,9 @@ class _SettingsTabState extends State<SettingsTab> {
                                         ),
                                       ),
                                     ),
-                                    if (PlatformConfig.supportsAutoPeriodExport)
+                                    if (AppCapabilities.current.supportsAutoPeriodExport)
                                       SizedBox(
-                                        width: 320,
+                                        width: constraints.maxWidth < 720 ? double.infinity : 320,
                                         child: SwitchListTile(
                                           value: _autoExport,
                                           onChanged: (value) =>
@@ -866,9 +863,9 @@ class _SettingsTabState extends State<SettingsTab> {
                                           contentPadding: EdgeInsets.zero,
                                         ),
                                       ),
-                                    if (PlatformConfig.supportsUpdateChecks)
+                                    if (AppCapabilities.current.supportsUpdateChecks)
                                       SizedBox(
-                                        width: 340,
+                                        width: constraints.maxWidth < 720 ? double.infinity : 340,
                                         child: SwitchListTile(
                                           value: _includeBeta,
                                           onChanged: (value) => setState(
@@ -886,7 +883,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                   runSpacing: 8,
                                   children: [
                                     SizedBox(
-                                      width: 170,
+                                      width: constraints.maxWidth < 720 ? double.infinity : 170,
                                       child: TextField(
                                         controller: _q1Ctrl,
                                         keyboardType: TextInputType.number,
@@ -895,7 +892,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 170,
+                                      width: constraints.maxWidth < 720 ? double.infinity : 170,
                                       child: TextField(
                                         controller: _q2Ctrl,
                                         keyboardType: TextInputType.number,
@@ -904,7 +901,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 170,
+                                      width: constraints.maxWidth < 720 ? double.infinity : 170,
                                       child: TextField(
                                         controller: _mCtrl,
                                         keyboardType: TextInputType.number,
@@ -931,7 +928,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                       label:
                                           const Text('Guardar configuracion'),
                                     ),
-                                    if (PlatformConfig.supportsUpdateChecks)
+                                    if (AppCapabilities.current.supportsUpdateChecks)
                                       OutlinedButton.icon(
                                         onPressed: () =>
                                             _checkForUpdatesManual(finance),
@@ -951,7 +948,7 @@ class _SettingsTabState extends State<SettingsTab> {
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
-                        if (PlatformConfig.supportsLocalBackup)
+                        if (AppCapabilities.current.supportsLocalBackup)
                           Wrap(
                             spacing: 10,
                             runSpacing: 8,

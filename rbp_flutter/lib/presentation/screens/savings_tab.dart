@@ -312,47 +312,53 @@ class _SavingsTabState extends State<SavingsTab> {
                     const Text('Agregar meta',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        SizedBox(
-                          width: 260,
-                          child: TextField(
-                            controller: _goalNameCtrl,
-                            decoration: const InputDecoration(
-                                labelText: 'Nombre meta', hintText: 'Viaje'),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 200,
-                          child: TextField(
-                            controller: _goalAmountCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            decoration: const InputDecoration(
-                                labelText: 'Meta RD\$', hintText: '100000'),
-                          ),
-                        ),
-                        FilledButton.icon(
-                          onPressed: () async {
-                            final name = _goalNameCtrl.text.trim();
-                            final amount =
-                                double.tryParse(_goalAmountCtrl.text.trim());
-                            if (name.isEmpty || amount == null || amount <= 0) {
-                              _show('Completa campos.');
-                              return;
-                            }
-                            await finance.addSavingsGoal(name, amount);
-                            _goalNameCtrl.clear();
-                            _goalAmountCtrl.clear();
-                            _show('Meta creada.');
-                          },
-                          icon: const Icon(Icons.flag),
-                          label: const Text('Crear meta'),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 620;
+                        final goalNameWidth = compact ? double.infinity : 260.0;
+                        final goalAmountWidth = compact ? double.infinity : 200.0;
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            SizedBox(
+                              width: goalNameWidth,
+                              child: TextField(
+                                controller: _goalNameCtrl,
+                                decoration: const InputDecoration(
+                                    labelText: 'Nombre meta', hintText: 'Viaje'),
+                              ),
+                            ),
+                            SizedBox(
+                              width: goalAmountWidth,
+                              child: TextField(
+                                controller: _goalAmountCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(
+                                    decimal: true),
+                                decoration: const InputDecoration(
+                                    labelText: 'Meta RD\$', hintText: '100000'),
+                              ),
+                            ),
+                            FilledButton.icon(
+                              onPressed: () async {
+                                final name = _goalNameCtrl.text.trim();
+                                final amount =
+                                    double.tryParse(_goalAmountCtrl.text.trim());
+                                if (name.isEmpty || amount == null || amount <= 0) {
+                                  _show('Completa campos.');
+                                  return;
+                                }
+                                await finance.addSavingsGoal(name, amount);
+                                _goalNameCtrl.clear();
+                                _goalAmountCtrl.clear();
+                                _show('Meta creada.');
+                              },
+                              icon: const Icon(Icons.flag),
+                              label: const Text('Crear meta'),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

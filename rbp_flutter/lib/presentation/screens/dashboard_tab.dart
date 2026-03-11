@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:rbp_flutter/config/constants.dart';
 import 'package:rbp_flutter/data/models/dashboard_data.dart';
 import 'package:rbp_flutter/data/models/expense.dart';
-import 'package:rbp_flutter/config/platform_config.dart';
+import 'package:rbp_flutter/core/platform/app_capabilities.dart';
 import 'package:rbp_flutter/presentation/providers/finance_provider.dart';
 import 'package:rbp_flutter/services/export_delivery_service.dart';
 import 'package:rbp_flutter/presentation/dialogs/confirm_dialog.dart';
@@ -109,7 +109,7 @@ class DashboardTab extends StatelessWidget {
     required String path,
     required String label,
   }) async {
-    if (!PlatformConfig.supportsPdfCsvExport) {
+    if (!AppCapabilities.current.supportsPdfCsvExport) {
       return '$label no esta disponible en esta plataforma.';
     }
     return _exportDelivery.deliverExportedFile(path, label: label);
@@ -180,10 +180,10 @@ class DashboardTab extends StatelessWidget {
                 ? () => showCustomQuincenaDialog(context, finance: finance)
                 : null,
             onChart: () => _showChart(context, finance),
-            onPdf: PlatformConfig.supportsPdfCsvExport
+            onPdf: AppCapabilities.current.supportsPdfCsvExport
                 ? () => _exportPdf(context, finance)
                 : null,
-            onCsv: PlatformConfig.supportsPdfCsvExport
+            onCsv: AppCapabilities.current.supportsPdfCsvExport
                 ? () => _exportCsv(context, finance)
                 : null,
           ),

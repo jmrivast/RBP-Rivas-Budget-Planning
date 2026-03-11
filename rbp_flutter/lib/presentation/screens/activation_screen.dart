@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../config/constants.dart';
 import '../../services/activation_flow_service.dart';
+import '../../services/app_access_service.dart';
 import '../../services/license_service.dart';
 import '../theme/app_icon_button.dart';
 
@@ -34,7 +35,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
   void initState() {
     super.initState();
     _activationFlow = ActivationFlowService(
-      licenseService: widget.licenseService,
+      accessService: AppAccessService(licenseService: widget.licenseService),
     );
     _loadMachineId();
   }
