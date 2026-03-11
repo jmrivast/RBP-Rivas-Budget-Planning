@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
-import '../../data/models/user.dart';
+import '../../services/profile_access_service.dart';
 import '../providers/finance_provider.dart';
 
 class ProfileAccessScreen extends StatefulWidget {
@@ -21,6 +21,7 @@ class ProfileAccessScreen extends StatefulWidget {
 
 class _ProfileAccessScreenState extends State<ProfileAccessScreen> {
   final _pinCtrl = TextEditingController();
+  final _profileAccess = ProfileAccessService();
   bool _loading = false;
   String? _error;
   int? _selectedProfileId;
@@ -33,13 +34,9 @@ class _ProfileAccessScreenState extends State<ProfileAccessScreen> {
         return;
       }
       final finance = context.read<FinanceProvider>();
-      final active = finance.activeProfile;
-      if (active?.id != null) {
-        setState(() => _selectedProfileId = active!.id!);
-      } else if (finance.profiles.isNotEmpty &&
-          finance.profiles.first.id != null) {
-        setState(() => _selectedProfileId = finance.profiles.first.id!);
-      }
+      setState(() {
+        _selectedProfileId = _profileAccess.resolveInitialProfileId(finance);
+      });
     });
   }
 
@@ -50,58 +47,44 @@ class _ProfileAccessScreenState extends State<ProfileAccessScreen> {
   }
 
   Future<void> _authenticate(FinanceProvider finance) async {
-    final profileId = _selectedProfileId;
-    if (profileId == null) {
-      setState(() => _error = 'Selecciona un perfil.');
-      return;
-    }
-    User? profile;
-    for (final p in finance.profiles) {
-      if (p.id == profileId) {
-        profile = p;
-        break;
-      }
-    }
-    if (profile == null) {
-      setState(() => _error = 'Perfil no encontrado.');
+    final profile = _profileAccess.findProfile(finance, _selectedProfileId);
+    final pin = _pinCtrl.text.trim();
+    final validationError = _profileAccess.validateAccess(
+      profileId: _selectedProfileId,
+      profile: profile,
+      pin: pin,
+    );
+    if (validationError != null) {
+      setState(() => _error = validationError);
       return;
     }
 
-    final selectedProfile = profile;
-    final pin = _pinCtrl.text.trim();
-    if (selectedProfile.hasPin) {
-      if (!RegExp(r'^\d+$').hasMatch(pin) ||
-          pin.length != selectedProfile.pinLength) {
-        final pinLength = selectedProfile.pinLength;
-        setState(() => _error = 'PIN invalido ($pinLength digitos).');
-        return;
-      }
-    }
+    final selectedProfile = profile!;
+    final selectedProfileId = _selectedProfileId!;
 
     setState(() {
       _loading = true;
       _error = null;
     });
-    try {
-      await finance.switchProfile(
-        profileId,
-        pin: selectedProfile.hasPin ? pin : null,
-      );
-      await finance.markProfileSession(sessionHours: widget.sessionHours);
-      if (!mounted) {
-        return;
-      }
-      widget.onAuthenticated();
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _error = 'No se pudo acceder: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+    final result = await _profileAccess.authenticate(
+      finance: finance,
+      profileId: selectedProfileId,
+      profile: selectedProfile,
+      pin: pin,
+      sessionHours: widget.sessionHours,
+    );
+    if (!mounted) {
+      return;
     }
+    if (!result.success) {
+      setState(() {
+        _loading = false;
+        _error = result.error;
+      });
+      return;
+    }
+    widget.onAuthenticated();
+    setState(() => _loading = false);
   }
 
   @override
@@ -111,13 +94,7 @@ class _ProfileAccessScreenState extends State<ProfileAccessScreen> {
       body: Consumer<FinanceProvider>(
         builder: (context, finance, _) {
           final profiles = finance.profiles;
-          User? selected;
-          for (final profile in profiles) {
-            if (profile.id == _selectedProfileId) {
-              selected = profile;
-              break;
-            }
-          }
+          final selected = _profileAccess.findProfile(finance, _selectedProfileId);
           final requiresPin = selected?.hasPin ?? false;
           final title = profiles.length <= 1
               ? 'Acceder al perfil'
