@@ -5,16 +5,14 @@ import 'app_access_service.dart';
 
 class AppEntryResolution {
   const AppEntryResolution({
+    required this.accessState,
     required this.needsActivation,
     required this.needsProfileAccess,
-    required this.activated,
-    required this.trialMode,
   });
 
+  final AppAccessState accessState;
   final bool needsActivation;
   final bool needsProfileAccess;
-  final bool activated;
-  final bool trialMode;
 }
 
 class AppEntryService {
@@ -36,32 +34,29 @@ class AppEntryService {
     final accessState = await _accessService.resolveAccessState();
     if (accessState.needsActivation) {
       return AppEntryResolution(
+        accessState: accessState,
         needsActivation: true,
         needsProfileAccess: false,
-        activated: accessState.activated,
-        trialMode: accessState.trialMode,
       );
     }
 
     final needsProfile = await _resolveProfileGate(finance);
     return AppEntryResolution(
+      accessState: accessState,
       needsActivation: false,
       needsProfileAccess: needsProfile,
-      activated: accessState.activated,
-      trialMode: accessState.trialMode,
     );
   }
 
   Future<AppEntryResolution> resolveAfterAccessGranted({
     required FinanceProvider finance,
-    required bool activated,
+    required AppAccessState accessState,
   }) async {
     final needsProfile = await _resolveProfileGate(finance);
     return AppEntryResolution(
+      accessState: accessState,
       needsActivation: false,
       needsProfileAccess: needsProfile,
-      activated: activated,
-      trialMode: !activated,
     );
   }
 

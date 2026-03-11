@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/constants.dart';
 import '../providers/finance_provider.dart';
 import '../providers/settings_provider.dart';
+import '../../services/app_access_service.dart';
 import '../../services/app_entry_service.dart';
 import 'activation_screen.dart';
 import 'home_screen.dart';
@@ -39,10 +40,7 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
         finance: finance,
         settings: settings,
       );
-      finance.setLicenseState(
-        activated: resolution.activated,
-        trialMode: resolution.trialMode,
-      );
+      finance.setAccessState(resolution.accessState);
       if (!mounted) {
         return;
       }
@@ -64,18 +62,18 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
 
   void _onActivated() {
     final finance = context.read<FinanceProvider>();
-    finance.setLicenseState(activated: true, trialMode: false);
-    _resolveProfileGateAfterActivation(activated: true);
+    finance.setAccessState(AppAccessState.licensed());
+    _resolveProfileGateAfterActivation(accessState: AppAccessState.licensed());
   }
 
   void _onContinueTrial() {
     final finance = context.read<FinanceProvider>();
-    finance.setLicenseState(activated: false, trialMode: true);
-    _resolveProfileGateAfterActivation(activated: false);
+    finance.setAccessState(AppAccessState.trial());
+    _resolveProfileGateAfterActivation(accessState: AppAccessState.trial());
   }
 
   Future<void> _resolveProfileGateAfterActivation({
-    required bool activated,
+    required AppAccessState accessState,
   }) async {
     if (!mounted) {
       return;
@@ -90,12 +88,9 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
       final finance = context.read<FinanceProvider>();
       final resolution = await _appEntryService.resolveAfterAccessGranted(
         finance: finance,
-        activated: activated,
+        accessState: accessState,
       );
-      finance.setLicenseState(
-        activated: resolution.activated,
-        trialMode: resolution.trialMode,
-      );
+      finance.setAccessState(resolution.accessState);
       if (!mounted) {
         return;
       }
@@ -191,3 +186,4 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
     );
   }
 }
+

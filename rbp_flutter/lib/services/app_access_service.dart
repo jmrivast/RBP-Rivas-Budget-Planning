@@ -1,3 +1,4 @@
+import '../config/constants.dart';
 import 'license_service.dart';
 
 enum AppAccessMode {
@@ -10,13 +11,42 @@ class AppAccessState {
   const AppAccessState({
     required this.mode,
     required this.needsActivation,
+    required this.canExport,
+    this.maxExpensesPerPeriod,
   });
 
   final AppAccessMode mode;
   final bool needsActivation;
+  final bool canExport;
+  final int? maxExpensesPerPeriod;
 
   bool get activated => mode != AppAccessMode.trial;
   bool get trialMode => mode == AppAccessMode.trial;
+
+  factory AppAccessState.unrestricted() {
+    return const AppAccessState(
+      mode: AppAccessMode.unrestricted,
+      needsActivation: false,
+      canExport: true,
+    );
+  }
+
+  factory AppAccessState.licensed() {
+    return const AppAccessState(
+      mode: AppAccessMode.licensed,
+      needsActivation: false,
+      canExport: true,
+    );
+  }
+
+  factory AppAccessState.trial() {
+    return const AppAccessState(
+      mode: AppAccessMode.trial,
+      needsActivation: true,
+      canExport: false,
+      maxExpensesPerPeriod: AppLicense.trialExpenseLimit,
+    );
+  }
 }
 
 class AppAccessService {
@@ -31,24 +61,15 @@ class AppAccessService {
   Future<AppAccessState> resolveAccessState() async {
     final requiresActivation = await _licenseService.requiresActivation();
     if (!requiresActivation) {
-      return const AppAccessState(
-        mode: AppAccessMode.unrestricted,
-        needsActivation: false,
-      );
+      return AppAccessState.unrestricted();
     }
 
     final activated = await _licenseService.isActivated();
     if (!activated) {
-      return const AppAccessState(
-        mode: AppAccessMode.trial,
-        needsActivation: true,
-      );
+      return AppAccessState.trial();
     }
 
-    return const AppAccessState(
-      mode: AppAccessMode.licensed,
-      needsActivation: false,
-    );
+    return AppAccessState.licensed();
   }
 
   Future<String> getMachineId() => _licenseService.getMachineId();

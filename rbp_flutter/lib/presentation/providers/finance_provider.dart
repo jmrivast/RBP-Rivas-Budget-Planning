@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../config/constants.dart';
 import '../../core/di/injection.dart';
 import '../../data/models/category.dart';
 import '../../data/models/custom_quincena.dart';
@@ -14,7 +13,9 @@ import '../../data/models/personal_debt.dart';
 import '../../data/models/personal_debt_payment.dart';
 import '../../data/models/savings_goal.dart';
 import '../../data/models/user.dart';
+import '../../services/app_access_service.dart';
 import '../../services/finance_service.dart';
+import '../../config/constants.dart';
 import '../../utils/date_helpers.dart' as dh;
 
 class FinanceProvider extends ChangeNotifier {
@@ -26,8 +27,7 @@ class FinanceProvider extends ChangeNotifier {
   bool _initialized = false;
   bool _loading = false;
   String? _error;
-  bool _licenseActivated = true;
-  bool _trialMode = false;
+  AppAccessState _accessState = AppAccessState.unrestricted();
 
   late int _year;
   late int _month;
@@ -48,8 +48,11 @@ class FinanceProvider extends ChangeNotifier {
   bool get initialized => _initialized;
   bool get isLoading => _loading;
   String? get error => _error;
-  bool get isLicenseActivated => _licenseActivated;
-  bool get isTrialMode => _trialMode;
+  AppAccessState get accessState => _accessState;
+  bool get isLicenseActivated => _accessState.activated;
+  bool get isTrialMode => _accessState.trialMode;
+  bool get canExport => _accessState.canExport;
+  int? get maxExpensesPerPeriod => _accessState.maxExpensesPerPeriod;
   int get year => _year;
   int get month => _month;
   int get cycle => _cycle;
@@ -66,13 +69,24 @@ class FinanceProvider extends ChangeNotifier {
   User? get activeProfile => _activeProfile;
   FinanceService get service => _service;
 
-  void setLicenseState({required bool activated, required bool trialMode}) {
-    if (_licenseActivated == activated && _trialMode == trialMode) {
+  void setAccessState(AppAccessState value) {
+    final sameState = _accessState.mode == value.mode &&
+        _accessState.needsActivation == value.needsActivation &&
+        _accessState.canExport == value.canExport &&
+        _accessState.maxExpensesPerPeriod == value.maxExpensesPerPeriod;
+    if (sameState) {
       return;
     }
-    _licenseActivated = activated;
-    _trialMode = trialMode;
+    _accessState = value;
     notifyListeners();
+  }
+
+  void setLicenseState({required bool activated, required bool trialMode}) {
+    setAccessState(
+      activated && !trialMode
+          ? AppAccessState.licensed()
+          : AppAccessState.trial(),
+    );
   }
 
   Future<void> init() async {
@@ -275,9 +289,12 @@ class FinanceProvider extends ChangeNotifier {
     String date, {
     String source = 'sueldo',
   }) async {
-    if (_trialMode && _expenses.length >= AppLicense.trialExpenseLimit) {
+    final limit = maxExpensesPerPeriod;
+    if (_accessState.trialMode &&
+        limit != null &&
+        _expenses.length >= limit) {
       throw Exception(
-        'Modo de prueba: maximo ${AppLicense.trialExpenseLimit} gastos por periodo.',
+        'Modo de prueba: maximo $limit gastos por periodo.',
       );
     }
     await _withMutation(() async {
@@ -709,28 +726,28 @@ class FinanceProvider extends ChangeNotifier {
   }
 
   Future<String> exportPdf() async {
-    if (_trialMode) {
+    if (!canExport) {
       throw Exception('Modo de prueba: exportar PDF requiere licencia activa.');
     }
     return _service.generateReport(_year, _month, _cycle);
   }
 
   Future<String> exportCsv() async {
-    if (_trialMode) {
+    if (!canExport) {
       throw Exception('Modo de prueba: exportar CSV requiere licencia activa.');
     }
     return _service.exportCsv(_year, _month, _cycle);
   }
 
   Future<String> exportPdfForPeriod(int year, int month, int cycle) async {
-    if (_trialMode) {
+    if (!canExport) {
       throw Exception('Modo de prueba: exportar PDF requiere licencia activa.');
     }
     return _service.generateReport(year, month, cycle);
   }
 
   Future<String> exportCsvForPeriod(int year, int month, int cycle) async {
-    if (_trialMode) {
+    if (!canExport) {
       throw Exception('Modo de prueba: exportar CSV requiere licencia activa.');
     }
     return _service.exportCsv(year, month, cycle);
