@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/constants.dart';
+import '../../services/activation_flow_service.dart';
 import '../../services/license_service.dart';
 import '../theme/app_icon_button.dart';
 
@@ -23,6 +24,7 @@ class ActivationScreen extends StatefulWidget {
 
 class _ActivationScreenState extends State<ActivationScreen> {
   final _keyCtrl = TextEditingController();
+  late final ActivationFlowService _activationFlow;
   String _machineId = '';
   String? _error;
   bool _loadingMachine = true;
@@ -31,6 +33,9 @@ class _ActivationScreenState extends State<ActivationScreen> {
   @override
   void initState() {
     super.initState();
+    _activationFlow = ActivationFlowService(
+      licenseService: widget.licenseService,
+    );
     _loadMachineId();
   }
 
@@ -41,25 +46,15 @@ class _ActivationScreenState extends State<ActivationScreen> {
   }
 
   Future<void> _loadMachineId() async {
-    try {
-      final id = await widget.licenseService.getMachineId();
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _machineId = id;
-        _loadingMachine = false;
-      });
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _machineId = 'NO DISPONIBLE';
-        _error = 'No se pudo obtener el ID de maquina: $e';
-        _loadingMachine = false;
-      });
+    final result = await _activationFlow.loadMachineId();
+    if (!mounted) {
+      return;
     }
+    setState(() {
+      _machineId = result.machineId;
+      _error = result.error;
+      _loadingMachine = false;
+    });
   }
 
   Future<void> _copyMachineId() async {
@@ -76,23 +71,17 @@ class _ActivationScreenState extends State<ActivationScreen> {
   }
 
   Future<void> _activate() async {
-    final key = _keyCtrl.text.trim().toUpperCase();
-    if (key.isEmpty) {
-      setState(() => _error = 'Ingresa una clave de licencia.');
-      return;
-    }
     setState(() {
       _activating = true;
       _error = null;
     });
     try {
-      final ok = await widget.licenseService.validateKey(key);
-      if (!ok) {
-        setState(() => _error = 'Clave invalida. Verifica e intenta de nuevo.');
+      final result = await _activationFlow.activate(_keyCtrl.text);
+      if (!mounted) {
         return;
       }
-      await widget.licenseService.storeKey(key);
-      if (!mounted) {
+      if (!result.success) {
+        setState(() => _error = result.error);
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -249,4 +238,3 @@ class _ActivationScreenState extends State<ActivationScreen> {
     );
   }
 }
-
