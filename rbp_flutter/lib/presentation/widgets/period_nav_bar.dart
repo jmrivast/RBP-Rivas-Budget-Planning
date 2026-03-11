@@ -39,96 +39,132 @@ class PeriodNavBar extends StatelessWidget {
       textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
 
+    final actionButtons = <Widget>[
+      if (onCalendar != null)
+        _compactIconButton(
+          onPressed: onCalendar,
+          icon: Icons.calendar_month,
+          color: AppColors.primary,
+          hoverColor: AppColors.hoverPrimary,
+          tooltip: isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
+        ),
+      if (onChart != null)
+        OutlinedButton.icon(
+          style: actionButtonStyle,
+          onPressed: onChart,
+          icon: const Icon(Icons.pie_chart),
+          label: const Text('Grafico'),
+        ),
+      if (onPdf != null)
+        OutlinedButton.icon(
+          style: actionButtonStyle,
+          onPressed: onPdf,
+          icon: const Icon(Icons.picture_as_pdf),
+          label: const Text('PDF'),
+        ),
+      if (onCsv != null)
+        OutlinedButton.icon(
+          style: actionButtonStyle,
+          onPressed: onCsv,
+          icon: const Icon(Icons.table_chart),
+          label: const Text('CSV'),
+        ),
+    ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 900) {
+        final compact = constraints.maxWidth < 620;
+        final medium = constraints.maxWidth < 900;
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _periodControls(compact: true),
+              if (actionButtons.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < actionButtons.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        actionButtons[i],
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          );
+        }
+
+        if (medium) {
           return Wrap(
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _periodControls(),
-              if (onCalendar != null)
-                _compactIconButton(
-                  onPressed: onCalendar,
-                  icon: Icons.calendar_month,
-                  color: AppColors.primary,
-                  hoverColor: AppColors.hoverPrimary,
-                  tooltip:
-                      isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
-                ),
-              if (onChart != null)
-                OutlinedButton.icon(
-                  style: actionButtonStyle,
-                  onPressed: onChart,
-                  icon: const Icon(Icons.pie_chart),
-                  label: const Text('Grafico'),
-                ),
-              if (onPdf != null)
-                OutlinedButton.icon(
-                  style: actionButtonStyle,
-                  onPressed: onPdf,
-                  icon: const Icon(Icons.picture_as_pdf),
-                  label: const Text('PDF'),
-                ),
-              if (onCsv != null)
-                OutlinedButton.icon(
-                  style: actionButtonStyle,
-                  onPressed: onCsv,
-                  icon: const Icon(Icons.table_chart),
-                  label: const Text('CSV'),
-                ),
+              _periodControls(compact: false),
+              ...actionButtons,
             ],
           );
         }
 
         return Row(
           children: [
-            _periodControls(),
+            _periodControls(compact: false),
             const Spacer(),
-            if (onCalendar != null)
-              _compactIconButton(
-                onPressed: onCalendar,
-                icon: Icons.calendar_month,
-                color: AppColors.primary,
-                hoverColor: AppColors.hoverPrimary,
-                tooltip:
-                    isMonthly ? 'Modo mensual' : 'Ajustar fechas de quincena',
-              ),
-            if (onChart != null)
-              OutlinedButton.icon(
-                style: actionButtonStyle,
-                onPressed: onChart,
-                icon: const Icon(Icons.pie_chart),
-                label: const Text('Grafico'),
-              ),
-            if (onPdf != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: OutlinedButton.icon(
-                  style: actionButtonStyle,
-                  onPressed: onPdf,
-                  icon: const Icon(Icons.picture_as_pdf),
-                  label: const Text('PDF'),
-                ),
-              ),
-            if (onCsv != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: OutlinedButton.icon(
-                  style: actionButtonStyle,
-                  onPressed: onCsv,
-                  icon: const Icon(Icons.table_chart),
-                  label: const Text('CSV'),
-                ),
-              ),
+            for (var i = 0; i < actionButtons.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              actionButtons[i],
+            ],
           ],
         );
       },
     );
   }
 
-  Widget _periodControls() {
+  Widget _periodControls({required bool compact}) {
+    if (compact) {
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          AppIconButton(
+            onPressed: onPrev,
+            icon: Icons.chevron_left,
+            color: AppColors.iconNeutral,
+            hoverColor: AppColors.hoverPrimary,
+            tooltip: isMonthly ? 'Mes anterior' : 'Quincena anterior',
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primaryLight,
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          AppIconButton(
+            onPressed: onNext,
+            icon: Icons.chevron_right,
+            color: AppColors.iconNeutral,
+            hoverColor: AppColors.hoverPrimary,
+            tooltip: isMonthly ? 'Mes siguiente' : 'Quincena siguiente',
+          ),
+          TextButton(onPressed: onToday, child: const Text('Hoy')),
+        ],
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
