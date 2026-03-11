@@ -1,11 +1,12 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/custom_quincena.dart';
 
 class SettingsRepository {
-  SettingsRepository({DatabaseHelper? dbHelper})
+  SettingsRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<void> setAppSetting(String key, String value) async {
     await _dbHelper.rawExecute(
@@ -213,3 +214,4 @@ ON CONFLICT(user_id, year, month, cycle) DO UPDATE SET
     );
   }
 }
+

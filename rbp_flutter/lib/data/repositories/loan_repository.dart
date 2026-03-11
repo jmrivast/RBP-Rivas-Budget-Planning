@@ -1,11 +1,12 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/loan.dart';
 
 class LoanRepository {
-  LoanRepository({DatabaseHelper? dbHelper})
+  LoanRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create({
     required int userId,
@@ -100,3 +101,4 @@ WHERE user_id = ?
     return (rows.first['total'] as num?)?.toDouble() ?? 0;
   }
 }
+

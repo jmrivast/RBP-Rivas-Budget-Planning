@@ -1,11 +1,12 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/category.dart';
 
 class CategoryRepository {
-  CategoryRepository({DatabaseHelper? dbHelper})
+  CategoryRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create(
     int userId,
@@ -66,3 +67,4 @@ class CategoryRepository {
     );
   }
 }
+

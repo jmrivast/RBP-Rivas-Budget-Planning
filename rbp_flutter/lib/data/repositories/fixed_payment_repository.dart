@@ -1,11 +1,12 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/fixed_payment.dart';
 
 class FixedPaymentRepository {
-  FixedPaymentRepository({DatabaseHelper? dbHelper})
+  FixedPaymentRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create({
     required int userId,
@@ -150,3 +151,4 @@ class FixedPaymentRepository {
     return (rows.first['c'] as num).toInt();
   }
 }
+

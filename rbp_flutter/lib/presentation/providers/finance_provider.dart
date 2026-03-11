@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/constants.dart';
-import '../../data/database/database_helper.dart';
+import '../../core/di/injection.dart';
 import '../../data/models/category.dart';
 import '../../data/models/custom_quincena.dart';
 import '../../data/models/dashboard_data.dart';
@@ -19,7 +19,7 @@ import '../../utils/date_helpers.dart' as dh;
 
 class FinanceProvider extends ChangeNotifier {
   FinanceProvider({FinanceService? service})
-      : _service = service ?? FinanceService(db: DatabaseHelper.instance);
+      : _service = service ?? DI.get<FinanceService>();
 
   final FinanceService _service;
 

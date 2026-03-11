@@ -3,9 +3,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'app_database.dart';
 import 'tables.dart';
 
-class DatabaseHelper {
+class DatabaseHelper implements AppDatabase {
   DatabaseHelper({
     this.databaseName = 'finanzas.db',
     this.useDocumentsDirectory = true,
@@ -187,3 +188,4 @@ class DatabaseHelper {
     }
   }
 }
+

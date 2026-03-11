@@ -1,12 +1,13 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/savings.dart';
 import '../models/savings_goal.dart';
 
 class SavingsRepository {
-  SavingsRepository({DatabaseHelper? dbHelper})
+  SavingsRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<void> recordSavings(
     int userId,
@@ -133,3 +134,4 @@ WHERE user_id = ? AND id = (
     );
   }
 }
+

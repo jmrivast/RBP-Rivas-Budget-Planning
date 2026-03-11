@@ -1,11 +1,12 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/extra_income.dart';
 
 class IncomeRepository {
-  IncomeRepository({DatabaseHelper? dbHelper})
+  IncomeRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create({
     required int userId,
@@ -71,3 +72,4 @@ class IncomeRepository {
         .delete('extra_income', where: 'id = ?', whereArgs: [incomeId]);
   }
 }
+

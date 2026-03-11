@@ -1,12 +1,13 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/debt.dart';
 import '../models/debt_payment.dart';
 
 class DebtRepository {
-  DebtRepository({DatabaseHelper? dbHelper})
+  DebtRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> createDebt({
     required int userId,
@@ -147,3 +148,4 @@ class DebtRepository {
     return (rows.first['c'] as num?)?.toInt() ?? 0;
   }
 }
+

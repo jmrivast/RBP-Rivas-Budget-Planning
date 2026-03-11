@@ -28,7 +28,7 @@ pytest-cache-files-*/
 data/finanzas.db
 backups/
 reportes/
-data/
+/data/
 
 # Public portfolio cleanup: keep local-only/supporting work out of the repo view
 backend/
@@ -64,3 +64,7 @@ rbp_flutter/coverage/
 rbp_flutter/android/app/debug/
 rbp_flutter/android/app/profile/
 rbp_flutter/android/app/release/
+
+!rbp_flutter/lib/data/
+!rbp_flutter/lib/data/**
+

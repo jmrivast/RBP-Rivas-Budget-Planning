@@ -1,13 +1,14 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/expense.dart';
 
 class ExpenseRepository {
-  ExpenseRepository({DatabaseHelper? dbHelper})
+  ExpenseRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create({
     required int userId,
@@ -159,3 +160,4 @@ LIMIT 1
     return (rows.first['c'] as num).toInt();
   }
 }
+

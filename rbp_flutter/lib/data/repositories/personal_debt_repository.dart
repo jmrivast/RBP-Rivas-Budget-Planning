@@ -1,12 +1,13 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/personal_debt.dart';
 import '../models/personal_debt_payment.dart';
 
 class PersonalDebtRepository {
-  PersonalDebtRepository({DatabaseHelper? dbHelper})
+  PersonalDebtRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create({
     required int userId,
@@ -142,3 +143,4 @@ WHERE user_id = ? AND is_paid = 0
     return (rows.first['total'] as num?)?.toDouble() ?? 0;
   }
 }
+

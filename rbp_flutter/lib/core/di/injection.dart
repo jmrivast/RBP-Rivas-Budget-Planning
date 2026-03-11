@@ -1,3 +1,4 @@
+import '../../data/database/app_database.dart';
 import '../../data/database/database_helper.dart';
 import '../../data/repositories/category_repository.dart';
 import '../../data/repositories/debt_repository.dart';
@@ -29,6 +30,7 @@ class DI {
 /// Wire up all dependencies. Called once from main().
 void setupDependencies() {
   final db = DatabaseHelper.instance;
+  DI.register<AppDatabase>(db);
 
   // Data layer repositories (concrete implementations)
   final categoryRepo     = CategoryRepository(dbHelper: db);
@@ -64,3 +66,4 @@ void setupDependencies() {
   // As repositories implement domain interfaces in a future phase,
   // these will be wired to actual interface implementations.
 }
+

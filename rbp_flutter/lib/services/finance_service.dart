@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 
 import '../config/constants.dart';
+import '../data/database/app_database.dart';
 import '../data/database/database_helper.dart';
 import '../data/models/category.dart';
 import '../data/models/custom_quincena.dart';
@@ -61,7 +62,7 @@ class FinanceService {
         csvService = csvService ?? CsvService(),
         pdfService = pdfService ?? PdfService();
 
-  final DatabaseHelper db;
+  final AppDatabase db;
   final UserRepository userRepo;
   final CategoryRepository categoryRepo;
   final ExpenseRepository expenseRepo;
@@ -1344,3 +1345,4 @@ class FinanceService {
   String _dateIso(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
+

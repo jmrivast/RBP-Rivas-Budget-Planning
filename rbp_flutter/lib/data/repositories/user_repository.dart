@@ -1,11 +1,12 @@
+import '../database/app_database.dart';
 import '../database/database_helper.dart';
 import '../models/user.dart';
 
 class UserRepository {
-  UserRepository({DatabaseHelper? dbHelper})
+  UserRepository({AppDatabase? dbHelper})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
-  final DatabaseHelper _dbHelper;
+  final AppDatabase _dbHelper;
 
   Future<int> create(
     String username, {
@@ -94,3 +95,4 @@ class UserRepository {
     return create('Jose', email: 'jose@example.com');
   }
 }
+
