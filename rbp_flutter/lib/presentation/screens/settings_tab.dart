@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/platform_config.dart';
@@ -8,7 +7,6 @@ import '../../data/models/user.dart';
 import '../providers/finance_provider.dart';
 import '../providers/settings_provider.dart';
 import '../../services/settings_actions_service.dart';
-import '../../services/update_service.dart';
 import '../dialogs/confirm_dialog.dart';
 import '../dialogs/rename_category_dialog.dart';
 import '../dialogs/update_available_dialog.dart';
@@ -36,7 +34,6 @@ class _SettingsTabState extends State<SettingsTab> {
   final _newProfilePinConfirmCtrl = TextEditingController();
 
   final _settingsActions = SettingsActionsService();
-  final _updateService = UpdateService();
 
   String _periodMode = 'quincenal';
   int _profilePinLength = 4;
@@ -405,6 +402,9 @@ class _SettingsTabState extends State<SettingsTab> {
     await finance.setSetting('quincenal_pay_day_1', '$q1');
     await finance.setSetting('quincenal_pay_day_2', '$q2');
     await finance.setSetting('monthly_pay_day', '$md');
+    await finance.setSetting('quincenal_pay_day_1', '$q1');
+    await finance.setSetting('quincenal_pay_day_2', '$q2');
+    await finance.setSetting('monthly_pay_day', '$md');
     final effectiveAutoExport =
         PlatformConfig.supportsAutoPeriodExport ? _autoExport : false;
     final effectiveIncludeBeta =
@@ -420,45 +420,26 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Future<void> _checkForUpdatesManual(FinanceProvider finance) async {
-    if (!PlatformConfig.supportsUpdateChecks) {
-      _show('Las actualizaciones automaticas solo estan disponibles en escritorio.');
-      return;
-    }
-
     try {
-      final includeBeta = _includeBeta;
-      final release =
-          await _updateService.fetchLatest(includeBeta: includeBeta);
-      final checkKey = includeBeta
-          ? 'update_last_check_date_beta'
-          : 'update_last_check_date_stable';
-      final today = DateTime.now().toIso8601String().split('T').first;
-      await finance.setSetting(checkKey, today);
+      final result = await _settingsActions.checkForUpdates(
+        includeBeta: _includeBeta,
+      );
+      if (result.checkKey != null && result.checkedOn != null) {
+        await finance.setSetting(result.checkKey!, result.checkedOn!);
+      }
 
-      if (release == null) {
-        _show('No se pudo verificar actualizaciones ahora mismo.');
+      if (result.status != UpdateCheckStatus.updateAvailable) {
+        _show(result.message);
         return;
       }
 
-      final info = await PackageInfo.fromPlatform();
-      final currentVersion = info.version;
-      final hasNew = UpdateService.isNewerVersion(currentVersion, release.tag);
-      if (!hasNew) {
-        if (includeBeta) {
-          _show('Ya tienes la version mas reciente (incluyendo beta).');
-        } else {
-          _show('Ya tienes la version mas reciente.');
-        }
-        return;
-      }
-
-      if (!mounted) {
+      if (!mounted || result.release == null || result.currentVersion == null) {
         return;
       }
       await showUpdateAvailableDialog(
         context,
-        latest: release,
-        currentVersion: currentVersion,
+        latest: result.release!,
+        currentVersion: result.currentVersion!,
         manual: true,
       );
     } catch (e) {
