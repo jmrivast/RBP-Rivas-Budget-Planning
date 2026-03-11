@@ -941,14 +941,14 @@ class _SettingsTabState extends State<SettingsTab> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1),
-                        const SizedBox(height: 10),
-                        const Text('Respaldo y restauracion',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        if (AppCapabilities.current.supportsLocalBackup)
+                        if (AppCapabilities.current.supportsLocalBackup) ...[
+                          const SizedBox(height: 12),
+                          const Divider(height: 1),
+                          const SizedBox(height: 10),
+                          const Text('Respaldo y restauracion',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 10,
                             runSpacing: 8,
@@ -986,13 +986,8 @@ class _SettingsTabState extends State<SettingsTab> {
                                 label: const Text('Restaurar respaldo'),
                               ),
                             ],
-                          )
-                        else
-                          Text(
-                            'El respaldo local se mantiene solo para escritorio. En web y movil habra que usar un flujo distinto.',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.subtitle),
                           ),
+                        ],
                         const SizedBox(height: 12),
                         const Divider(height: 1),
                         const SizedBox(height: 10),
@@ -1108,6 +1103,7 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 }
+
 
 
 
