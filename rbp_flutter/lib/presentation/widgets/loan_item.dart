@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/loan.dart';
@@ -48,7 +49,7 @@ class LoanItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(loan.person,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                    style: const TextStyle(fontWeight: fw600)),
                 Text(
                   '${subtitleParts.join(' - ')}$deductionLabel',
                   style: TextStyle(fontSize: 12, color: AppColors.subtitle),
@@ -67,14 +68,14 @@ class LoanItem extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontWeight: fw700,
               ),
             ),
           ),
           const SizedBox(width: 8),
           Text(
             formatCurrency(loan.amount),
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(fontWeight: fw700),
           ),
           if (!paid)
             AppIconButton(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 
@@ -43,7 +44,7 @@ class StatCard extends StatelessWidget {
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: fw700,
                     fontSize: 20,
                     color: effectiveColor,
                   ),

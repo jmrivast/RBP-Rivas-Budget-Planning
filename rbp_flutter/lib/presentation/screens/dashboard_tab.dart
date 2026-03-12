@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 import 'package:rbp_flutter/config/constants.dart';
 import 'package:rbp_flutter/data/models/dashboard_data.dart';
@@ -54,7 +55,7 @@ class DashboardTab extends StatelessWidget {
                     style: TextStyle(
                       color: AppColors.primary,
                       fontSize: compact ? 26 : 44,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: fw700,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -214,7 +215,7 @@ class DashboardTab extends StatelessWidget {
           const SizedBox(height: 10),
           const Text(
             'Ultimos gastos',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 15, fontWeight: fw600),
           ),
           const SizedBox(height: 8),
           Expanded(

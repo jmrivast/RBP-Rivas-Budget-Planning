@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/extra_income.dart';
@@ -32,7 +33,7 @@ class IncomeItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(income.description,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                    style: const TextStyle(fontWeight: fw600)),
                 Text(income.date,
                     style: TextStyle(fontSize: 12, color: AppColors.subtitle)),
               ],
@@ -41,7 +42,7 @@ class IncomeItem extends StatelessWidget {
           Text(
             formatCurrency(income.amount),
             style: TextStyle(
-              fontWeight: FontWeight.w700,
+              fontWeight: fw700,
               color: AppColors.success,
             ),
           ),

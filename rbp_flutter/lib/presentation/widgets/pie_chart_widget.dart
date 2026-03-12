@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../../utils/currency_formatter.dart';
@@ -70,7 +71,7 @@ class PieChartWidget extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.primary,
                 fontSize: isCompact ? 22 : 30,
-                fontWeight: FontWeight.w700,
+                fontWeight: fw700,
               ),
             ),
             const SizedBox(height: 12),

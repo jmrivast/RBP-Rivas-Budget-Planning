@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/constants.dart';
@@ -124,7 +125,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                   'Activar RBP',
                   style: TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: fw700,
                     color: AppColors.primary,
                   ),
                 ),
@@ -161,8 +162,8 @@ class _ActivationScreenState extends State<ActivationScreen> {
                                 child: Text(
                                   _loadingMachine ? 'Cargando...' : _machineId,
                                   style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'Roboto Mono, Consolas, monospace',
+                                    fontWeight: fw700,
                                     letterSpacing: 0.7,
                                   ),
                                 ),

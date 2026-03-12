@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -102,7 +103,7 @@ class _PersonalDebtsPanelState extends State<PersonalDebtsPanel> {
               children: [
                 const Text(
                   'Nueva deuda personal',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 16, fontWeight: fw700),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -225,7 +226,7 @@ class _PersonalDebtsPanelState extends State<PersonalDebtsPanel> {
           Text(
             value,
             style:
-                TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+                TextStyle(color: AppColors.primary, fontWeight: fw700),
           ),
         ],
       ),
@@ -261,7 +262,7 @@ class _PersonalDebtTile extends StatelessWidget {
                 child: Text(
                   debt.person,
                   style:
-                      const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      const TextStyle(fontSize: 15, fontWeight: fw700),
                 ),
               ),
               Container(
@@ -276,7 +277,7 @@ class _PersonalDebtTile extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: fw700,
                   ),
                 ),
               ),
@@ -574,7 +575,7 @@ Future<void> _showPersonalDebtPaymentsDialog(
                       ),
                       Text(
                         formatCurrency(p.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontWeight: fw700),
                       ),
                     ],
                   );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/update_service.dart';
@@ -26,7 +27,7 @@ Future<void> showUpdateAvailableDialog(
             children: [
               Text('Version actual: v$currentVersion'),
               Text('Nueva version: ${latest.tag}',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+                  style: const TextStyle(fontWeight: fw700)),
               const SizedBox(height: 8),
               const Text('Novedades:'),
               const SizedBox(height: 4),

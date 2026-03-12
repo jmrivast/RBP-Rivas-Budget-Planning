@@ -1,6 +1,6 @@
 {
-    "name": "rbp_flutter",
-    "short_name": "rbp_flutter",
+    "name": "RBP - Rivas Budget Planning",
+    "short_name": "RBP",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

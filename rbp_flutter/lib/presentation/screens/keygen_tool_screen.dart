@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/license_key_codec.dart';
@@ -83,7 +84,7 @@ class _KeygenToolScreenState extends State<KeygenToolScreen> {
                 children: [
                   const Text(
                     'Generador de licencia por Machine ID',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 20, fontWeight: fw700),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -177,7 +178,7 @@ class _ResultField extends StatelessWidget {
                 const SizedBox(height: 4),
                 SelectableText(
                   value,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 18, fontWeight: fw700),
                 ),
               ],
             ),

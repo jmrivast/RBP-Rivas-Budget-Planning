@@ -18,6 +18,7 @@ class PlatformConfig {
   static bool get supportsAutoPeriodExport => isWindows;
   static bool get supportsExportOpen => isDesktop;
   static bool get supportsNativeShare => isMobile;
-  static bool get supportsPdfCsvExport => isDesktop || isMobile;
+  static bool get supportsPdfCsvExport => isDesktop || isMobile || isWeb;
 }
+
 

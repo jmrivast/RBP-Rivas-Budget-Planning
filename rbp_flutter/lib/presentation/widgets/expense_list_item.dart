@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/dashboard_data.dart';
@@ -34,7 +35,7 @@ class ExpenseListItem extends StatelessWidget {
               children: [
                 Text(
                   item.description,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontWeight: fw500),
                 ),
                 Text(
                   '${item.date}  ·  ${item.categories}',
@@ -46,7 +47,7 @@ class ExpenseListItem extends StatelessWidget {
           Text(
             formatCurrency(item.amount),
             style: TextStyle(
-              fontWeight: FontWeight.w700,
+              fontWeight: fw700,
               color: isFixedDue ? AppColors.warn : AppColors.error,
             ),
           ),

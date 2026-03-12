@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -55,7 +56,7 @@ Future<void> showManageDebtsDialog(
                       const Text(
                         'Nueva deuda',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700),
+                            fontSize: 16, fontWeight: fw700),
                       ),
                       const SizedBox(height: 8),
                       Wrap(
@@ -211,7 +212,7 @@ Future<void> showManageDebtsDialog(
                       const Text(
                         'Deudas registradas',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700),
+                            fontSize: 16, fontWeight: fw700),
                       ),
                       const SizedBox(height: 8),
                       Expanded(
@@ -284,7 +285,7 @@ class _DebtTile extends StatelessWidget {
                   debt.name,
                   style: const TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: fw700,
                   ),
                 ),
               ),
@@ -300,7 +301,7 @@ class _DebtTile extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: fw700,
                   ),
                 ),
               ),
@@ -406,14 +407,14 @@ class _DebtsSummary extends StatelessWidget {
             '$label: ',
             style: TextStyle(
               color: AppColors.subtitle,
-              fontWeight: FontWeight.w600,
+              fontWeight: fw600,
             ),
           ),
           Text(
             value,
             style: TextStyle(
               color: AppColors.primary,
-              fontWeight: FontWeight.w700,
+              fontWeight: fw700,
             ),
           ),
         ],
@@ -695,7 +696,7 @@ Future<void> _showDebtPaymentsDialog(BuildContext context, Debt debt) async {
                         child: Text(
                           formatCurrency(p.totalAmount),
                           textAlign: TextAlign.right,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: const TextStyle(fontWeight: fw700),
                         ),
                       ),
                     ],

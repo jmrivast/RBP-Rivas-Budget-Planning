@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -116,7 +117,7 @@ class _ProfileAccessScreenState extends State<ProfileAccessScreen> {
                           title,
                           style: const TextStyle(
                             fontSize: 22,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: fw700,
                           ),
                         ),
                         const SizedBox(height: 6),

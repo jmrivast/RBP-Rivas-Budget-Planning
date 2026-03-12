@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -102,7 +103,7 @@ class _ExpenseTabState extends State<ExpenseTab> {
                 children: [
                   const Text('Registrar gasto',
                       style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                          TextStyle(fontSize: 18, fontWeight: fw600)),
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,

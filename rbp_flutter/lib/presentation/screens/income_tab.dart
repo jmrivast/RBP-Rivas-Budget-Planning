@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -98,7 +99,7 @@ class _IncomeTabState extends State<IncomeTab> {
                   children: [
                     const Text('Salario',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600)),
+                            fontSize: 18, fontWeight: fw600)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 10,
@@ -212,7 +213,7 @@ class _IncomeTabState extends State<IncomeTab> {
                   children: [
                     const Text('Agregar ingreso',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600)),
+                            fontSize: 16, fontWeight: fw600)),
                     const SizedBox(height: 8),
                     SizedBox(
                       width: 320,
@@ -310,7 +311,7 @@ class _IncomeTabState extends State<IncomeTab> {
                       const SizedBox(height: 12),
                       const Text('Ingresos extras',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
+                              fontSize: 16, fontWeight: fw600)),
                       const SizedBox(height: 8),
                       Expanded(
                         child: Container(

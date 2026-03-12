@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -71,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                                     'RBP - Finanzas Personales',
                                     style: TextStyle(
                                       fontSize: isCompact ? 18 : 22,
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: fw700,
                                       color: const Color(0xFF202124),
                                     ),
                                   ),
@@ -115,7 +116,7 @@ class HomeScreen extends StatelessWidget {
                                     'Modo de prueba activo. Puedes usar la app con limites y activar la licencia cuando quieras.',
                                     style: TextStyle(
                                       color: AppColors.trialBannerText,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: fw500,
                                     ),
                                   ),
                                 ),
@@ -135,11 +136,11 @@ class HomeScreen extends StatelessWidget {
                           dividerColor: Colors.transparent,
                           splashBorderRadius: BorderRadius.circular(10),
                           labelStyle: const TextStyle(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: fw600,
                             fontSize: 14,
                           ),
                           unselectedLabelStyle: const TextStyle(
-                            fontWeight: FontWeight.w500,
+                            fontWeight: fw500,
                             fontSize: 14,
                           ),
                           tabs: const [

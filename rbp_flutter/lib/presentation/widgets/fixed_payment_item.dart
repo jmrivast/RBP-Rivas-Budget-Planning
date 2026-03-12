@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/dashboard_data.dart';
@@ -41,7 +42,7 @@ class FixedPaymentItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(payment.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                    style: const TextStyle(fontWeight: fw600)),
                 Text(
                   payment.dueDay <= 0
                       ? 'Pago manual Sin fecha fija'
@@ -55,7 +56,7 @@ class FixedPaymentItem extends StatelessWidget {
           ),
           Text(
             formatCurrency(payment.amount),
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(fontWeight: fw700),
           ),
           AppIconButton(
             onPressed: onEdit,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/platform/app_capabilities.dart';
@@ -478,7 +479,7 @@ class _SettingsTabState extends State<SettingsTab> {
                       children: [
                         const Text('Configuracion',
                             style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600)),
+                                fontSize: 18, fontWeight: fw600)),
                         const SizedBox(height: 4),
                         Text(
                           'Personaliza frecuencia, dias de cobro, exportacion y categorias.',
@@ -508,7 +509,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                     'Estas usando la app en modo de prueba. Puedes activar la licencia desde aqui cuando quieras.',
                                     style: TextStyle(
                                       color: AppColors.trialBannerText,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: fw500,
                                     ),
                                   ),
                                 ),
@@ -525,7 +526,7 @@ class _SettingsTabState extends State<SettingsTab> {
                         const SizedBox(height: 10),
                         const Text('Perfiles',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
+                                fontSize: 16, fontWeight: fw600)),
                         const SizedBox(height: 8),
                         Card(
                           child: Padding(
@@ -536,7 +537,7 @@ class _SettingsTabState extends State<SettingsTab> {
                                 Text(
                                   'Perfil actual: ${finance.activeProfile?.username ?? '-'}',
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: fw600,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -789,7 +790,7 @@ class _SettingsTabState extends State<SettingsTab> {
                         const SizedBox(height: 10),
                         const Text('General',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
+                                fontSize: 16, fontWeight: fw600)),
                         const SizedBox(height: 8),
                         Card(
                           child: Padding(
@@ -947,7 +948,7 @@ class _SettingsTabState extends State<SettingsTab> {
                           const SizedBox(height: 10),
                           const Text('Respaldo y restauracion',
                               style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600)),
+                                  fontSize: 16, fontWeight: fw600)),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 10,
@@ -993,7 +994,7 @@ class _SettingsTabState extends State<SettingsTab> {
                         const SizedBox(height: 10),
                         const Text('Categorias',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
+                                fontSize: 16, fontWeight: fw600)),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 10,

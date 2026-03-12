@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 import 'package:rbp_flutter/config/constants.dart';
 import 'package:rbp_flutter/presentation/providers/finance_provider.dart';
@@ -136,7 +137,7 @@ class _LoansTabState extends State<LoansTab> {
           children: [
             const Text(
               'Dinero prestado',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 18, fontWeight: fw600),
             ),
             const SizedBox(height: 8),
             Expanded(
@@ -193,7 +194,7 @@ class _LoansTabState extends State<LoansTab> {
             const SizedBox(height: 10),
             const Text(
               'Nuevo prestamo',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 16, fontWeight: fw600),
             ),
             const SizedBox(height: 8),
             Wrap(

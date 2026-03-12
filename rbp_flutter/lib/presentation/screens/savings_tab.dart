@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -59,7 +60,7 @@ class _SavingsTabState extends State<SavingsTab> {
                   children: [
                     const Text('Ahorro',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600)),
+                            fontSize: 18, fontWeight: fw600)),
                     const SizedBox(height: 8),
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -73,7 +74,7 @@ class _SavingsTabState extends State<SavingsTab> {
                               children: [
                                 const Text('Ahorro de este periodo',
                                     style:
-                                        TextStyle(fontWeight: FontWeight.w600)),
+                                        TextStyle(fontWeight: fw600)),
                                 const SizedBox(height: 4),
                                 Text('Actual: ${formatCurrency(periodSavings)}',
                                     style:
@@ -131,7 +132,7 @@ class _SavingsTabState extends State<SavingsTab> {
                               children: [
                                 const Text('Ahorro total',
                                     style:
-                                        TextStyle(fontWeight: FontWeight.w600)),
+                                        TextStyle(fontWeight: fw600)),
                                 const SizedBox(height: 4),
                                 Text(
                                     'Disponible: ${formatCurrency(totalSavings)}',
@@ -255,7 +256,7 @@ class _SavingsTabState extends State<SavingsTab> {
                     const SizedBox(height: 10),
                     const Text('Metas de ahorro',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600)),
+                            fontSize: 16, fontWeight: fw600)),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: goalsHeight,
@@ -311,7 +312,7 @@ class _SavingsTabState extends State<SavingsTab> {
                     const SizedBox(height: 10),
                     const Text('Agregar meta',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600)),
+                            fontSize: 16, fontWeight: fw600)),
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final compact = constraints.maxWidth < 620;

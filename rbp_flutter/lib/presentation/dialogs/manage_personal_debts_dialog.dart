@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -50,7 +51,7 @@ Future<void> showManagePersonalDebtsDialog(
                 children: [
                   const Text(
                     'Nueva deuda personal',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 16, fontWeight: fw700),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -172,7 +173,7 @@ Future<void> showManagePersonalDebtsDialog(
                   const SizedBox(height: 8),
                   const Text(
                     'Listado',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 16, fontWeight: fw700),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
@@ -230,7 +231,7 @@ Widget _metric(String label, String value) {
         Text('$label: ', style: TextStyle(color: AppColors.subtitle)),
         Text(value,
             style: TextStyle(
-                color: AppColors.primary, fontWeight: FontWeight.w700)),
+                color: AppColors.primary, fontWeight: fw700)),
       ],
     ),
   );
@@ -260,7 +261,7 @@ class _PersonalDebtTile extends StatelessWidget {
                 child: Text(
                   debt.person,
                   style:
-                      const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      const TextStyle(fontSize: 15, fontWeight: fw700),
                 ),
               ),
               Container(
@@ -275,7 +276,7 @@ class _PersonalDebtTile extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: fw700,
                   ),
                 ),
               ),
@@ -554,7 +555,7 @@ Future<void> _showPersonalDebtPaymentsDialog(
                       child: Text(
                         formatCurrency(p.amount),
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontWeight: fw700),
                       ),
                     ),
                   ],

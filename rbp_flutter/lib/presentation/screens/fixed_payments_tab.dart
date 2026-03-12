@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
@@ -82,7 +83,7 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Pagos fijos',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 18, fontWeight: fw600)),
               const SizedBox(height: 8),
               Expanded(
                 child: Container(
@@ -139,7 +140,7 @@ class _FixedPaymentsTabState extends State<FixedPaymentsTab> {
               const Divider(height: 1),
               const SizedBox(height: 10),
               const Text('Agregar pago fijo',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 16, fontWeight: fw600)),
               const SizedBox(height: 8),
               SizedBox(
                 width: 260,

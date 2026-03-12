@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../theme/app_icon_button.dart';
@@ -36,7 +37,7 @@ class PeriodNavBar extends StatelessWidget {
       overlayColor: AppColors.hoverPrimary,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       minimumSize: const Size(0, 38),
-      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      textStyle: const TextStyle(fontSize: 15, fontWeight: fw500),
     );
 
     final actionButtons = <Widget>[
@@ -148,7 +149,7 @@ class PeriodNavBar extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                fontWeight: FontWeight.w600,
+                fontWeight: fw600,
                 color: AppColors.primary,
               ),
             ),
@@ -184,7 +185,7 @@ class PeriodNavBar extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: fw600,
               color: AppColors.primary,
             ),
           ),

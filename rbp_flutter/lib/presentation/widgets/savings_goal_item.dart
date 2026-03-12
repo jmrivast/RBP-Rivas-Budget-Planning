@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rbp_flutter/utils/web_font.dart';
 
 import '../../config/constants.dart';
 import '../../data/models/savings_goal.dart';
@@ -40,7 +41,7 @@ class SavingsGoalItem extends StatelessWidget {
               Expanded(
                 child: Text(
                   goal.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontWeight: fw600),
                 ),
               ),
               Text(
