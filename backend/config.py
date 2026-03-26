@@ -10,6 +10,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _normalize_database_url(url: str) -> str:
+    cleaned = (url or "").strip()
+    if not cleaned:
+        return "sqlite+aiosqlite:///./data/finanzas_app.db"
+    if cleaned.startswith("postgres://"):
+        return cleaned.replace("postgres://", "postgresql+asyncpg://", 1)
+    if cleaned.startswith("postgresql://") and "+asyncpg" not in cleaned:
+        return cleaned.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return cleaned
+
+
 @dataclass(slots=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "RBP API")
@@ -20,7 +31,9 @@ class Settings:
     jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
     refresh_token_expire_days: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
-    database_url: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/finanzas_app.db")
+    database_url: str = _normalize_database_url(
+        os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/finanzas_app.db")
+    )
     cors_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080").split(",")
