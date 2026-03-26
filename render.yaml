@@ -18,27 +18,11 @@ services:
           name: finanzas-app-db
           property: connectionString
       - key: CORS_ORIGINS
-        value: https://tu-dominio.com
+        value: "*"
       - key: BILLING_PROVIDER
-        value: polar
+        value: stub
       - key: SECRET_KEY
         generateValue: true
-      - key: POLAR_CHECKOUT_URL
-        sync: false
-      - key: POLAR_API_BASE_URL
-        value: https://api.polar.sh
-      - key: POLAR_ACCESS_TOKEN
-        sync: false
-      - key: POLAR_ORGANIZATION_ID
-        sync: false
-      - key: POLAR_PRODUCT_ID
-        sync: false
-      - key: POLAR_SUCCESS_URL
-        sync: false
-      - key: POLAR_RETURN_URL
-        sync: false
-      - key: POLAR_WEBHOOK_SECRET
-        sync: false
 
 databases:
   - name: finanzas-app-db
