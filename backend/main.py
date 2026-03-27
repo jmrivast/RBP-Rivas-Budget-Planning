@@ -99,4 +99,8 @@ async def frontend_index():
     return {'message': 'frontend not available'}
 
 
+if FRONTEND_DIR.exists():
+    app.mount('/', StaticFiles(directory=FRONTEND_DIR, html=True), name='frontend-root')
+
+
 
